@@ -54,7 +54,7 @@ rec_fields = {
   'milestone'      : 'string',
   'owner'          : 'string',
   'estimatedhours' : 'string',
-  'defect'         : 'string' 
+  'type'           : 'string' 
 }
 
 class Client():
@@ -67,7 +67,9 @@ class Client():
     _domain = None
     _project = None
     _cookie = None
-    _mapping = None
+    _mapping = {}
+    _return_fields = None
+    _default_values = {}
     
     def __init__(self):
         """Class constructor
@@ -78,7 +80,22 @@ class Client():
         
         self._mh = MasterHead.get_head()
         self._client = RESTClient()  
-        self._mapping = self._mh.cfg['Extensions']['TrackApps']['mapping']['trac']  
+
+        cfg = self._mh.cfg['Extensions']['TrackApps']['trac'] 
+        if (cfg.has_key('mapping') and cfg['mapping'] != None):
+            self._mapping = cfg['mapping'] 
+        if (cfg.has_key('return_fields') and cfg['return_fields'] != None):
+            self._return_fields = cfg['return_fields'].split(',') 
+        if (cfg.has_key('default_values') and cfg['default_values'] != None):
+            self._default_values = cfg['default_values']  
+        if (cfg.has_key('url') and cfg['url'] != None):
+            self._url = cfg['url']    
+        if (cfg.has_key('user') and cfg['user'] != None):
+            self._user = cfg['user']   
+        if (cfg.has_key('passw') and cfg['passw'] != None):
+            self._passw = cfg['passw']  
+        if (cfg.has_key('project') and cfg['project'] != None):
+            self._project = cfg['project']              
         
     @property
     def client(self):
@@ -120,9 +137,21 @@ class Client():
     def mapping(self):
         """ mapping property getter """
         
-        return self._mapping    
+        return self._mapping   
     
-    def connect(self, url, user, passw, project):
+    @property
+    def return_fields(self):
+        """ return_fields property getter """
+        
+        return self._return_fields   
+    
+    @property
+    def default_values(self):
+        """ default_values property getter """
+        
+        return self._default_values       
+    
+    def connect(self, url=None, user=None, passw=None, project=None):
         """Method connects to QC
         
         Args:    
@@ -142,6 +171,15 @@ class Client():
         
         message = 'url:{0}, user:{1}, passw:{2}, project:{3}'.format(url, user, passw, project)
         self._mh.dmsg('htk_on_debug_info', self._mh._trn.msg('track_connecting', message), self._mh.fromhere()) 
+        
+        if (url == None):
+            url = self._url
+        if (user == None):
+            user = self._user
+        if (passw == None):
+            passw = self._passw    
+        if (project == None):
+            project = self._project            
         
         ev = event.Event('track_before_connect', url, user, passw, project)
         if (self._mh.fire_event(ev) > 0):
@@ -197,6 +235,13 @@ class Client():
         message = 'id:{0}, fields:{1}, query:{2}'.format(id, fields, query)
         self._mh.dmsg('htk_on_debug_info', self._mh._trn.msg('track_reading', message), self._mh.fromhere()) 
         
+        if (fields == None and self._return_fields != None):
+            fields = []
+            for key in self._return_fields:
+                if (key in self._mapping.values()):
+                    key = self._mapping.keys()[self._mapping.values().index(key)] 
+                fields.append(key)    
+        
         ev = event.Event('track_before_read', id, fields, query)
         if (self._mh.fire_event(ev) > 0):
             id = ev.argv(0)
@@ -240,12 +285,12 @@ class Client():
                     record = {}
                     
                     for val in rec.params.param.value.array.data.value:
-                        if (hasattr(val, 'int')):
+                        if (hasattr(val, 'int') and (fields == None or 'id' in fields)):
                             record['id'] = val.int    
                         elif (hasattr(val, 'struct')):  
                                   
                             for item in val.struct.member:
-                                key = item.name                                                              
+                                key = str(item.name)                                                              
                                 value = getattr(item.value, rec_fields[key]) if (rec_fields.has_key(key)) else None                                
                                 if (key in self._mapping.values()):
                                     key = self._mapping.keys()[self._mapping.values().index(key)]                                      
@@ -282,6 +327,11 @@ class Client():
         """       
         
         self._mh.dmsg('htk_on_debug_info', self._mh._trn.msg('track_creating', 'issue', params), self._mh.fromhere())
+        
+        if (self._default_values != {}):
+            for key, value in self._default_values.items():
+                if (not params.has_key(key)):
+                    params[key] = value         
         
         ev = event.Event('track_before_create', params)
         if (self._mh.fire_event(ev) > 0):
@@ -362,7 +412,7 @@ class Client():
                         
             for key, value in params.items():
                 if (self._mapping.has_key(key)):
-                    key = self._mapping(key)
+                    key = self._mapping[key]
                 if (rec_fields.has_key(key) and rec_fields[key] != 'dateTime.iso8601'):
                     el_member = SubElement(el_struct, 'member')
                     SubElement(el_member, 'name').text = str(key)

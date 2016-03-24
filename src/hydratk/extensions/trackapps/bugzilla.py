@@ -41,7 +41,9 @@ class Client():
     _user = None
     _passw = None
     _token = None
-    _mapping = None
+    _mapping = {}
+    _return_fields = None
+    _default_values = {}
     
     def __init__(self):
         """Class constructor
@@ -51,8 +53,21 @@ class Client():
         """  
         
         self._mh = MasterHead.get_head()
-        self._client = RESTClient()     
-        self._mapping = self._mh.cfg['Extensions']['TrackApps']['mapping']['bugzilla']  
+        self._client = RESTClient()
+         
+        cfg = self._mh.cfg['Extensions']['TrackApps']['bugzilla'] 
+        if (cfg.has_key('mapping') and cfg['mapping'] != None):
+            self._mapping = cfg['mapping'] 
+        if (cfg.has_key('return_fields') and cfg['return_fields'] != None):
+            self._return_fields = cfg['return_fields'].split(',') 
+        if (cfg.has_key('default_values') and cfg['default_values'] != None):
+            self._default_values = cfg['default_values'] 
+        if (cfg.has_key('url') and cfg['url'] != None):
+            self._url = cfg['url']    
+        if (cfg.has_key('user') and cfg['user'] != None):
+            self._user = cfg['user']   
+        if (cfg.has_key('passw') and cfg['passw'] != None):
+            self._passw = cfg['passw']                           
     
     @property
     def client(self):
@@ -88,9 +103,21 @@ class Client():
     def mapping(self):
         """ mapping property getter """
         
-        return self._mapping     
+        return self._mapping         
     
-    def connect(self, url, user, passw):
+    @property
+    def return_fields(self):
+        """ return_fields property getter """
+        
+        return self._return_fields   
+    
+    @property
+    def default_values(self):
+        """ default_values property getter """
+        
+        return self._default_values      
+    
+    def connect(self, url=None, user=None, passw=None):
         """Method connects to Bugzilla
         
         Args:    
@@ -109,6 +136,13 @@ class Client():
         
         message = 'url:{0}, user:{1}, passw:{2}'.format(url, user, passw)
         self._mh.dmsg('htk_on_debug_info', self._mh._trn.msg('track_connecting', message), self._mh.fromhere()) 
+        
+        if (url == None):
+            url = self._url
+        if (user == None):
+            user = self._user
+        if (passw == None):
+            passw = self._passw                        
         
         ev = event.Event('track_before_connect', url, user, passw)
         if (self._mh.fire_event(ev) > 0):
@@ -191,6 +225,13 @@ class Client():
                    id, fields, query, limit, offset)
         self._mh.dmsg('htk_on_debug_info', self._mh._trn.msg('track_reading', message), self._mh.fromhere()) 
         
+        if (fields == None and self._return_fields != None):
+            fields = []
+            for key in self._return_fields:
+                if (key in self._mapping.values()):
+                    key = self._mapping.keys()[self._mapping.values().index(key)] 
+                fields.append(key)     
+        
         ev = event.Event('track_before_read', id, fields, query, limit, offset)
         if (self._mh.fire_event(ev) > 0):
             id = ev.argv(0)
@@ -225,7 +266,7 @@ class Client():
                     record = {}
                     for key, value in body['bugs'][i].items():
                         if (key in self._mapping.values()):
-                            key = self._mapping.keys()[self._mapping.values().index(key)]                       
+                            key = self._mapping.keys()[self._mapping.values().index(key)]                     
                         if (fields == None or key in fields):
                             record[key] = value                     
                     records.append(record)       
@@ -256,6 +297,11 @@ class Client():
         
         self._mh.dmsg('htk_on_debug_info', self._mh._trn.msg('track_creating', 'bug', params), self._mh.fromhere())
         
+        if (self._default_values != {}):
+            for key, value in self._default_values.items():
+                if (not params.has_key(key)):
+                    params[key] = value         
+        
         ev = event.Event('track_before_create', params)
         if (self._mh.fire_event(ev) > 0):
             params = ev.argv(0)  
@@ -267,12 +313,12 @@ class Client():
                 if (self._mapping.has_key(key)):
                     key = self._mapping[key]
                 root[key] = value         
+            root['token'] = self._token 
             body = write(root)
              
-            url = self._url + config['rest']
-            params['token'] = self._token           
+            url = self._url + config['rest']                    
             res, body = self._client.send_request(url, method='POST', headers={'Accept': 'application/json'},
-                                                  body=body, params=params, content_type='json')
+                                                  body=body, content_type='json')
             
         id = None
         if (res == 200):
@@ -315,12 +361,12 @@ class Client():
                 if (self._mapping.has_key(key)):
                     key = self._mapping[key]
                 root[key] = value         
+            root['token'] = self._token  
             body = write(root)
              
-            url = self._url + config['rest'] + '/' + str(id)
-            params['token'] = self._token           
+            url = self._url + config['rest'] + '/' + str(id)               
             res, body = self._client.send_request(url, method='PUT', headers={'Accept': 'application/json'}, 
-                                                  body=body, params=params, content_type='json')
+                                                  body=body, content_type='json')
             
         result = False
         if (res == 200):

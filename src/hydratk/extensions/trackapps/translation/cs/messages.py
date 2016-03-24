@@ -16,7 +16,7 @@ language = {
 
 msg = { 
     'track_connecting'     : ["Připojuji se ns server s parametry: {0}"],
-    'trakc_connected'      : ["Spojení se serverem bylo úspěšné"],
+    'track_connected'      : ["Spojení se serverem bylo úspěšné"],
     'track_missing_cookie' : ["V odpovědi se nevrátilo cookie"],
     'track_missing_token'  : ["V odpovědi se nevrátil token"],
     'track_error'          : ["Nastala chyba HTTP status:'{0}', chyba: {1}"],
@@ -30,5 +30,12 @@ msg = {
     'track_updated'        : ["Záznam s id:'{0}' změněn"],
     'track_deleting'       : ["Mažu záznam entita:'{0}', id:'{1}'"],
     'track_deleted'        : ["Záznam s id:'{0}' smazán"],
-    'trac_unknown_record'  : ["Neexistující záznam s id:'{0}'"]        
+    'track_unknown_record' : ["Neexistující záznam s id:'{0}'"],
+    'track_unknown_entity' : ["Neexistující entita:'{0}'"],
+    'track_unknown_folder' : ["Neexistující test adresář:'{0}'"],
+    'track_reading_folder' : ["Čtu test adresář: '{0}', entita:'{1}'"],
+    'track_folder_read'    : ["Přečteno testů v adresáři: '{0}'"],
+    'track_missing_hier'   : ["Chybí hierarchical path v test adresáři:'{0}'"],
+    'track_reading_set'    : ["Čtu test set: '{0}'"],
+    'track_set_read'       : ["Přečteno testů v test setu: '{0}'"]         
 }

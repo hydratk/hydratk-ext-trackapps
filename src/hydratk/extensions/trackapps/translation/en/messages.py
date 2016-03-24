@@ -30,5 +30,12 @@ msg = {
     'track_updated'        : ["Record with id:'{0}' updated"],
     'track_deleting'       : ["Deleting record entity:'{0}', id:'{1}'"],
     'track_deleted'        : ["Record with id:'{0}' deleted"],
-    'trac_unknown_record'  : ["Unknown record with id:'{0}'"]
+    'track_unknown_record' : ["Unknown record with id:'{0}'"],
+    'track_unknown_entity' : ["Unknown entity:'{0}'"],
+    'track_unknown_folder' : ["Unknown test folder:'{0}'"],
+    'track_reading_folder' : ["Reading test folder: '{0}', entity:'{1}'"],
+    'track_folder_read'    : ["Tests in folder read: '{0}'"],
+    'track_missing_hier'   : ["Missing hierarchical path in test folder:'{0}'"],
+    'track_reading_set'    : ["Reading test set: '{0}'"],
+    'track_set_read'       : ["Tests in set read: '{0}'"] 
 }

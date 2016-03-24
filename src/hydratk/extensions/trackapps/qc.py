@@ -21,6 +21,10 @@ track_before_update
 track_after_update
 track_before_delete
 track_after_delete
+track_before_read_folder
+track_after_read_folder
+track_before_read_set
+track_after_read_set
 
 """
 
@@ -32,7 +36,8 @@ from lxml.etree import Element, SubElement, tostring
 config = {
   'sign_in'  : '/authentication-point/authenticate',
   'sign_out' : '/authentication-point/logout',
-  'rest'     : '/rest/domains/{0}/projects/{1}/{2}s/'
+  'rest'     : '/rest/domains/{0}/projects/{1}/{2}s',
+  'entities' : ['defect', 'test-folder', 'test', 'test-set-folder', 'test-set', 'test-instance']
 }
 
 class Client():
@@ -45,7 +50,9 @@ class Client():
     _domain = None
     _project = None
     _cookie = None
-    _mapping = None
+    _mapping = {}
+    _return_fields = None
+    _default_values = {}
     
     def __init__(self):
         """Class constructor
@@ -56,7 +63,27 @@ class Client():
         
         self._mh = MasterHead.get_head()
         self._client = RESTClient()   
-        self._mapping = self._mh.cfg['Extensions']['TrackApps']['mapping']['qc'] 
+        
+        cfg = self._mh.cfg['Extensions']['TrackApps']['qc'] 
+        if (cfg.has_key('mapping') and cfg['mapping'] != None):
+            self._mapping = cfg['mapping'] 
+        if (cfg.has_key('return_fields') and cfg['return_fields'] != None):
+            self._return_fields = cfg['return_fields']
+            for key, value in cfg['return_fields'].items():
+                if (value != None):
+                    self._return_fields[key] = value.split(',')
+        if (cfg.has_key('default_values') and cfg['default_values'] != None):
+            self._default_values = cfg['default_values']  
+        if (cfg.has_key('url') and cfg['url'] != None):
+            self._url = cfg['url']    
+        if (cfg.has_key('user') and cfg['user'] != None):
+            self._user = cfg['user']   
+        if (cfg.has_key('passw') and cfg['passw'] != None):
+            self._passw = cfg['passw']  
+        if (cfg.has_key('domain') and cfg['domain'] != None):
+            self._domain = cfg['domain']
+        if (cfg.has_key('project') and cfg['project'] != None):
+            self._project = cfg['project']                                     
         
     @property
     def client(self):
@@ -104,9 +131,21 @@ class Client():
     def mapping(self):
         """ mapping property getter """
         
-        return self._mapping                         
+        return self._mapping  
+    
+    @property
+    def return_fields(self):
+        """ return_fields property getter """
+        
+        return self._return_fields   
+    
+    @property
+    def default_values(self):
+        """ default_values property getter """
+        
+        return self._default_values                                  
      
-    def connect(self, url, user, passw, domain, project):
+    def connect(self, url=None, user=None, passw=None, domain=None, project=None):
         """Method connects to QC
         
         Args:    
@@ -126,7 +165,18 @@ class Client():
         """    
         
         message = 'url:{0}, user:{1}, passw:{2}, domain:{3}, project:{4}'.format(url, user, passw, domain, project)
-        self._mh.dmsg('htk_on_debug_info', self._mh._trn.msg('track_connecting', message), self._mh.fromhere()) 
+        self._mh.dmsg('htk_on_debug_info', self._mh._trn.msg('track_connecting', message), self._mh.fromhere())
+        
+        if (url == None):
+            url = self._url
+        if (user == None):
+            user = self._user
+        if (passw == None):
+            passw = self._passw    
+        if (domain == None):
+            domain = self._domain
+        if (project == None):
+            project = self._project             
         
         ev = event.Event('track_before_connect', url, user, passw, domain, project)
         if (self._mh.fire_event(ev) > 0):
@@ -144,7 +194,7 @@ class Client():
             self._project = project  
             
             url = self._url + config['sign_in']
-            res, body = self._client.send_request(self._url, self._user, self._passw, 'POST')
+            res, body = self._client.send_request(url, self._user, self._passw, 'POST')
         
         result = False
         if (res == 200): 
@@ -158,7 +208,8 @@ class Client():
             else:
                 self._mh.dmsg('htk_on_error', self._mh._trn.msg('track_missing_cookie'), self._mh.fromhere())
         else:
-            self._mh.dmsg('htk_on_error', self._mh._trn.msg('track_error', res, body.Title), self._mh.fromhere())    
+            error = body.Title if (hasattr(body, 'Title')) else body
+            self._mh.dmsg('htk_on_error', self._mh._trn.msg('track_error', res, error), self._mh.fromhere())    
         
         return result   
     
@@ -183,7 +234,8 @@ class Client():
             self._cookie = None
             result = True
         else:
-            self._mh.dmsg('htk_on_error', self._mh._trn.msg('track_error', res, body.Title), self._mh.fromhere())
+            error = body.Title if (hasattr(body, 'Title')) else body
+            self._mh.dmsg('htk_on_error', self._mh._trn.msg('track_error', res, error), self._mh.fromhere())
             
         return result  
     
@@ -192,7 +244,7 @@ class Client():
         
         Args: 
            id (int): record id
-           entity (str): entity type, defect           
+           entity (str): entity type    
            fields (list): fields to be returned, default all
            query (str): record query
            order_by (dict): record ordering, key - field, value - direction asc|desc 
@@ -208,9 +260,20 @@ class Client():
                 
         """   
         
+        if (entity not in config['entities']):
+            self._mh.dmsg('htk_on_error', self._mh._trn.msg('track_unknown_entity', entity), self._mh.fromhere())
+            return (False, None)
+        
         message = 'entity:{0}, id:{1}, fields:{2}, query:{3}, order_by:{4}, limit:{5}, offset:{6}'.format(
                    entity, id, fields, query, order_by, limit, offset)
         self._mh.dmsg('htk_on_debug_info', self._mh._trn.msg('track_reading', message), self._mh.fromhere()) 
+        
+        if (fields == None and self._return_fields.has_key(entity) and self._return_fields[entity] != None):
+            fields = []
+            for key in self._return_fields[entity]:
+                if (self._mapping.has_key(entity) and key in self._mapping[entity].values()):
+                    key = self._mapping[entity].keys()[self._mapping[entity].values().index(key)] 
+                fields.append(key) 
         
         ev = event.Event('track_before_read', entity, id, fields, query, order_by, limit, offset)
         if (self._mh.fire_event(ev) > 0):
@@ -228,14 +291,14 @@ class Client():
             if (fields != None and len(fields) > 0):
                 param = ""
                 for field in fields:
-                    if (self._mapping.has_key(field)):
-                        field = self._mapping[field]
+                    if (self._mapping.has_key(entity) and self._mapping[entity].has_key(field)):
+                        field = self._mapping[entity][field]
                     param += field + ','
                 params['fields'] = param[:-1]
             if (query != None):
                 params['query'] = query
             if (id != None):
-                params['query'] = '{ID[=%d]}' % id if (not params.has_key('query')) else params['query'] + '; {ID[=%d]}' % id
+                params['query'] = '{ID[%s]}' % id
             if (order_by != None and len(order_by.keys()) > 0):
                 param = ""
                 for field, direction in order_by.items():
@@ -257,26 +320,27 @@ class Client():
             result = False
             records = None
             if (res == 200):
-                
-                cnt = int(body.get('TotalResults'))
                 records = []
-                for i in xrange(0, cnt):
-                    record = {}
-                    for field in body.Entity[i].Fields.Field:
-                        key = field.get('Name')
-                        if (key in self._mapping.values()):
-                            key = self._mapping.keys()[self._mapping.values().index(key)]
-                        value = field.Value if (hasattr(field, 'Value')) else None
-                        if (fields == None or key in fields):
-                            record[key] = value 
-                    records.append(record)       
+                if (int(body.get('TotalResults')) > 0):
+                    for ent in body.Entity:                    
+                        record = {}
+                        for field in ent.Fields.Field:
+                            key = field.get('Name')
+                            if (self._mapping.has_key(entity) and self._mapping[entity] != None 
+                                and key in self._mapping[entity].values()):
+                                key = self._mapping[entity].keys()[self._mapping[entity].values().index(key)]
+                            value = field.Value if (hasattr(field, 'Value')) else None
+                            if (fields == None or key in fields):
+                                record[key] = value 
+                        records.append(record)       
                             
-                self._mh.dmsg('htk_on_debug_info', self._mh._trn.msg('track_qc_read', cnt), self._mh.fromhere())            
+                self._mh.dmsg('htk_on_debug_info', self._mh._trn.msg('track_read', len(records)), self._mh.fromhere())            
                 ev = event.Event('track_after_read')
                 self._mh.fire_event(ev)   
                 result = True   
             else:
-                self._mh.dmsg('htk_on_error', self._mh._trn.msg('track_error', res, body.Title), self._mh.fromhere())           
+                error = body.Title if (hasattr(body, 'Title')) else body
+                self._mh.dmsg('htk_on_error', self._mh._trn.msg('track_error', res, error), self._mh.fromhere())           
             
             return (result, records)   
         
@@ -284,7 +348,7 @@ class Client():
         """Method creates record
         
         Args: 
-           entity (str): entity type, defect
+           entity (str): entity type
            params (dict): record content, key - field name, value - field value
              
         Returns:
@@ -296,7 +360,16 @@ class Client():
                 
         """       
         
+        if (entity not in config['entities']):
+            self._mh.dmsg('htk_on_error', self._mh._trn.msg('track_unknown_entity', entity), self._mh.fromhere())
+            return (False, None)        
+        
         self._mh.dmsg('htk_on_debug_info', self._mh._trn.msg('track_creating', entity, params), self._mh.fromhere())
+        
+        if (self._default_values.has_key(entity) and self._default_values[entity] != None):
+            for key, value in self._default_values[entity].items():
+                if (not params.has_key(key)):
+                    params[key] = value 
         
         ev = event.Event('track_before_create', entity, params)
         if (self._mh.fire_event(ev) > 0):
@@ -310,10 +383,10 @@ class Client():
             el_fields = SubElement(root, 'Fields')
             for key, value in params.items():
                 elem = SubElement(el_fields, 'Field')            
-                if (self._mapping.has_key(key)):
-                    key = self._mapping[key]
+                if (self._mapping.has_key(entity) and self._mapping[entity].has_key(key)):
+                    key = self._mapping[entity][key]
                 elem.set('Name', key)
-                SubElement(elem, 'Value').text = value           
+                SubElement(elem, 'Value').text = str(value)           
             body = tostring(root)
              
             url = self._url + config['rest'].format(self._domain, self._project, entity)
@@ -327,7 +400,8 @@ class Client():
             ev = event.Event('track_after_create')
             self._mh.fire_event(ev) 
         else:
-            self._mh.dmsg('htk_on_error', self._mh._trn.msg('track_error', res, body.Title), self._mh.fromhere())            
+            error = body.Title if (hasattr(body, 'Title')) else body
+            self._mh.dmsg('htk_on_error', self._mh._trn.msg('track_error', res, error), self._mh.fromhere())            
         
         return id    
     
@@ -336,7 +410,7 @@ class Client():
         
         Args: 
            id (int): entity id
-           entity (str): entity type, defect           
+           entity (str): entity type         
            params (dict): record content, key - field name, value - field value 
              
         Returns:
@@ -347,6 +421,10 @@ class Client():
            event: track_after_update
                 
         """          
+      
+        if (entity not in config['entities']):
+            self._mh.dmsg('htk_on_error', self._mh._trn.msg('track_unknown_entity', entity), self._mh.fromhere())
+            return (False, None)      
       
         self._mh.dmsg('htk_on_debug_info', self._mh._trn.msg('track_updating', entity, id, params), self._mh.fromhere())
         
@@ -363,13 +441,13 @@ class Client():
             el_fields = SubElement(root, 'Fields')
             for key, value in params.items():
                 elem = SubElement(el_fields, 'Field')            
-                if (self._mapping.has_key(key)):
-                    key = self._mapping[key]
+                if (self._mapping.has_key(entity) and self._mapping[entity].has_key(key)):
+                    key = self._mapping[entity][key]
                 elem.set('Name', key)
-                SubElement(elem, 'Value').text = value           
+                SubElement(elem, 'Value').text = str(value)           
             body = tostring(root)
              
-            url = self._url + config['rest'].format(self._domain, self._project, entity) + str(id)
+            url = self._url + config['rest'].format(self._domain, self._project, entity) + '/' + str(id)
             headers = {'Cookie': self._cookie}           
             res, body = self._client.send_request(url, method='PUT', headers=headers, body=body,
                                                   content_type='xml')
@@ -380,7 +458,8 @@ class Client():
             self._mh.fire_event(ev) 
             result = True
         else:
-            self._mh.dmsg('htk_on_error', self._mh._trn.msg('track_error', res, body.Title), self._mh.fromhere())            
+            error = body.Title if (hasattr(body, 'Title')) else body
+            self._mh.dmsg('htk_on_error', self._mh._trn.msg('track_error', res, error), self._mh.fromhere())            
         
         return result        
     
@@ -389,7 +468,7 @@ class Client():
         
         Args: 
            id (int): entity id
-           entity (str): entity type, defect           
+           entity (str): entity type          
              
         Returns:
            bool: result
@@ -399,6 +478,10 @@ class Client():
            event: track_after_delete
                 
         """         
+        
+        if (entity not in config['entities']):
+            self._mh.dmsg('htk_on_error', self._mh._trn.msg('track_unknown_entity', entity), self._mh.fromhere())
+            return (False, None)        
         
         self._mh.dmsg('htk_on_debug_info', self._mh._trn.msg('track_deleting', entity, id), self._mh.fromhere())
         
@@ -420,6 +503,230 @@ class Client():
             self._mh.fire_event(ev) 
             result = True
         else:
-            self._mh.dmsg('htk_on_error', self._mh._trn.msg('track_error', res, body.Title), self._mh.fromhere())            
+            error = body.Title if (hasattr(body, 'Title')) else body
+            self._mh.dmsg('htk_on_error', self._mh._trn.msg('track_error', res, error), self._mh.fromhere())            
         
-        return result                                                                          
+        return result           
+    
+    def read_test_folder(self, path, entity='test-folder'):
+        """Method reads tests under test folder
+        
+        Args: 
+           path (str): folder path   
+           entity (str): entity type, test-folder|test-set-folder
+             
+        Returns:
+           tuple: result (bool), records (dict), key - test folder, value - list of tests
+           
+        Raises:
+           event: track_before_read_folder
+           event: track_after_read_folder
+                
+        """          
+     
+        if (entity not in ['test-folder', 'test-set-folder']):
+            self._mh.dmsg('htk_on_error', self._mh._trn.msg('track_unknown_entity', entity), self._mh.fromhere())
+            return (False, None)     
+     
+        self._mh.dmsg('htk_on_debug_info', self._mh._trn.msg('track_reading_folder', path, entity), 
+                      self._mh.fromhere())        
+        
+        ev = event.Event('track_before_read_folder', path, entity)
+        if (self._mh.fire_event(ev) > 0):
+            path = ev.argv(0)
+            entity = ev.argv(1)
+            
+        if (ev.will_run_default()):           
+            
+            folder = self._get_folder(path, entity) 
+            if (folder == None):
+                return (False, None)
+            
+            hier_path = folder['hierarchical-path']                                 
+            if (hier_path != None):
+                fields = ['id', 'name', 'parent-id']
+                query = '{hierarchical-path[%s*]}' % hier_path
+                res, folders = self.read(entity=entity, fields=fields, query=query)  
+                                
+                top_id = folder['id'] 
+                names_new = []
+                for i in xrange(0, len(folders)):   
+                                                         
+                    if (folders[i]['id'] == top_id):
+                        names_new.append(path)
+                    else:
+                        parent_id = folders[i]['parent-id']
+                        name = folders[i]['name']
+                        while (parent_id != top_id):
+                            
+                            j = 0
+                            while (folders[j]['id'] != parent_id):                         
+                                j += 1
+                            parent_id = folders[j]['parent-id']
+                            name = '{0}/{1}'.format(folders[j]['name'], name)
+                            
+                        names_new.append('{0}/{1}'.format(path, name))
+                         
+                for i in xrange(0, len(folders)):  
+                    folders[i]['name'] = names_new[i]                       
+                
+                if (res):
+                    tests = {}
+                    cnt = 0     
+                    entity = 'test' if (entity == 'test-folder') else 'test-set'
+                    fields = None if (entity == 'test-folder') else ['id', 'name']               
+                    for rec in folders:                                           
+                        query = '{parent-id[%d]}' % rec['id']
+                        res, records = self.read(entity=entity, fields=fields, query=query) 
+                        if (res):
+                            tests[rec['name']] = records
+                            cnt += len(records)
+                
+                self._mh.dmsg('htk_on_debug_info', self._mh._trn.msg('track_folder_read', cnt), self._mh.fromhere())            
+                ev = event.Event('track_after_read_folder')
+                self._mh.fire_event(ev)                 
+                            
+                return (True, tests) 
+            
+            else:
+                self._mh.dmsg('htk_on_error', self._mh._trn.msg('track_missing_hier', folder['name']), self._mh.fromhere())                
+                return (False, None)
+            
+    def create_test_folder(self, path, name, entity='test-folder'):  
+        """Method creates test folder on path
+        
+        Args: 
+           path (str): folder path
+           name (str): folder name
+           entity (str): entity type, test-folder|test-set-folder
+             
+        Returns:
+           int: folder id
+                
+        """       
+        
+        if (entity not in ['test-folder', 'test-set-folder']):
+            self._mh.dmsg('htk_on_error', self._mh._trn.msg('track_unknown_entity', entity), self._mh.fromhere())
+            return None         
+        
+        folder = self._get_folder(path, entity)
+        if (folder == None):
+            return None
+        
+        params = {'name': name, 'parent-id': folder['id']}
+        return self.create(entity, params)  
+    
+    def read_test_set(self, id): 
+        """Method reads tests under test set
+        
+        Args: 
+           id (int): test set id
+             
+        Returns:
+           tuple: result (bool), tests (list of dict)
+           
+        Raises:
+           track_before_read_set
+           track_after_read_set
+                
+        """ 
+        
+        self._mh.dmsg('htk_on_debug_info', self._mh._trn.msg('track_reading_set', id), 
+                      self._mh.fromhere())        
+        
+        ev = event.Event('track_before_read_set', id)
+        if (self._mh.fire_event(ev) > 0):
+            id = ev.argv(0) 
+            
+        if (ev.will_run_default()):                           
+            fields = ['test-id', 'status', 'exec-date', 'actual-tester']
+            query = '{cycle-id[%d]}' % id
+            res, tests = self.read(entity='test-instance', fields=fields, query=query)
+         
+        if (res):                
+            self._mh.dmsg('htk_on_debug_info', self._mh._trn.msg('track_set_read', len(tests)), self._mh.fromhere())            
+            ev = event.Event('track_after_read_set')
+            self._mh.fire_event(ev)  
+                       
+            return (True, tests)
+        else:
+            return (False, None) 
+        
+    def create_test_set(self, path, params={}):  
+        """Method creates test set on path
+        
+        Args: 
+           path (str): folder path
+           params (dict): test content, key - field name, value - field value  
+             
+        Returns:
+           int: test set id
+                
+        """       
+        
+        folder = self._get_folder(path, 'test-set-folder')
+        if (folder == None):
+            return None
+        
+        params['parent-id'] = folder['id']
+        return self.create('test-set', params)                         
+            
+    def create_test(self, path, params={}):  
+        """Method creates test on path
+        
+        Args: 
+           path (str): folder path
+           params (dict): test content, key - field name, value - field value    
+             
+        Returns:
+           int: test id
+                
+        """       
+        
+        folder = self._get_folder(path)
+        if (folder == None):
+            return None
+        
+        params['parent-id'] = folder['id']
+        return self.create('test', params)
+    
+    def _get_folder(self, path, entity='test-folder'): 
+        """Method gets folder from hierarchical path
+        
+        Args: 
+           path (str): folder path, Folder1/Folder2/...    
+           entity (str): entity type, test-folder|test-set-folder
+             
+        Returns:
+           dict
+
+        """    
+        
+        folders = path.split('/')
+        fields = ['id', 'name', 'hierarchical-path']
+        parent_id = 0
+        
+        if (folders[0] == 'Root'):
+            folders = folders[1:]
+        
+        cnt = len(folders)        
+        for i in xrange(0, cnt):
+            query = '{parent-id[%d]}' % parent_id            
+            res, records = self.read(entity=entity, fields=fields, query=query)   
+                            
+            if (res):
+                found = False
+                j = 0                    
+                while (not found and j < len(records)):                      
+                    record = records[j]
+                    if (record['name'] == folders[i]):
+                        parent_id = record['id']
+                        found = True
+                    j += 1 
+                        
+            if (not found):
+                self._mh.dmsg('htk_on_error', self._mh._trn.msg('track_unknown_folder', folders[i]), 
+                               self._mh.fromhere())
+                return None
+            
+        return record                                                                                                          

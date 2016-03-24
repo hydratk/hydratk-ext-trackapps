@@ -79,7 +79,9 @@ class Client():
     _passw = None
     _project = None
     _project_id = None
-    _mapping = None
+    _mapping = {}
+    _return_fields = None
+    _default_values = {}
     
     def __init__(self):
         """Class constructor
@@ -90,7 +92,22 @@ class Client():
         
         self._mh = MasterHead.get_head()        
         self._client = SOAPClient()  
-        self._mapping = self._mh.cfg['Extensions']['TrackApps']['mapping']['mantis']   
+
+        cfg = self._mh.cfg['Extensions']['TrackApps']['mantis'] 
+        if (cfg.has_key('mapping') and cfg['mapping'] != None):
+            self._mapping = cfg['mapping'] 
+        if (cfg.has_key('return_fields') and cfg['return_fields'] != None):
+            self._return_fields = cfg['return_fields'].split(',') 
+        if (cfg.has_key('default_values') and cfg['default_values'] != None):
+            self._default_values = cfg['default_values']  
+        if (cfg.has_key('url') and cfg['url'] != None):
+            self._url = cfg['url']    
+        if (cfg.has_key('user') and cfg['user'] != None):
+            self._user = cfg['user']   
+        if (cfg.has_key('passw') and cfg['passw'] != None):
+            self._passw = cfg['passw']  
+        if (cfg.has_key('project') and cfg['project'] != None):
+            self._project = cfg['project']              
     
     @property
     def client(self):
@@ -132,9 +149,21 @@ class Client():
     def mapping(self):
         """ mapping property getter """
         
-        return self._mapping   
+        return self._mapping  
     
-    def connect(self, url, user, passw, project):
+    @property
+    def return_fields(self):
+        """ return_fields property getter """
+        
+        return self._return_fields   
+    
+    @property
+    def default_values(self):
+        """ default_values property getter """
+        
+        return self._default_values       
+    
+    def connect(self, url=None, user=None, passw=None, project=None):
         """Method connects to Mantis
         
         Args:    
@@ -154,6 +183,15 @@ class Client():
         
         message = 'url:{0}, user:{1}, passw:{2}, project:{3}'.format(url, user, passw, project)
         self._mh.dmsg('htk_on_debug_info', self._mh._trn.msg('track_connecting', message), self._mh.fromhere()) 
+        
+        if (url == None):
+            url = self._url
+        if (user == None):
+            user = self._user
+        if (passw == None):
+            passw = self._passw    
+        if (project == None):
+            project = self._project            
         
         ev = event.Event('track_before_connect', url, user, passw, project)
         if (self._mh.fire_event(ev) > 0):
@@ -190,7 +228,7 @@ class Client():
         
         return res                 
     
-    def read(self, id=None, fields=None, page=-1, per_page=-1): 
+    def read(self, id=None, fields=None, page=-1, per_page=-1, remap=True): 
         """Method reads records
         
         Args: 
@@ -198,6 +236,7 @@ class Client():
            fields (list): fields to be returned, default all
            page (int): page number
            per_page (int): records per page
+           remap (bool): enable field mapping
              
         Returns:
            tuple: result (bool), records (list of dictionary)
@@ -208,8 +247,17 @@ class Client():
                 
         """   
         
-        message = 'id:{0}, fields:{1}, page:{2}, per_page:{3}'.format(id, fields)
+        message = 'id:{0}, fields:{1}, page:{2}, per_page:{3}'.format(id, fields, page, per_page)
         self._mh.dmsg('htk_on_debug_info', self._mh._trn.msg('track_reading', message), self._mh.fromhere()) 
+        
+        if (fields == None and self._return_fields != None):
+            fields = []
+            for key in self._return_fields:
+                if (key in self._mapping.values()):
+                    key = self._mapping.keys()[self._mapping.values().index(key)] 
+                fields.append(key) 
+        elif (fields == 'all'):
+            fields = None       
         
         ev = event.Event('track_before_read', id, fields, page, per_page)
         if (self._mh.fire_event(ev) > 0):
@@ -239,12 +287,12 @@ class Client():
             records = None
             if (res != None):
                 if (id != None):
-                    records = self._parse_record(res, fields)
+                    records = self._parse_record(res, fields, remap)
                     cnt = 1
                 else:
                     records = []
                     for item in res:
-                        records.append(self._parse_record(item, fields))
+                        records.append(self._parse_record(item, fields, remap))
                     cnt = len(records)
                 result = True
                 
@@ -270,6 +318,11 @@ class Client():
         """   
         
         self._mh.dmsg('htk_on_debug_info', self._mh._trn.msg('track_creating', 'issue', params), self._mh.fromhere())
+        
+        if (self._default_values != {}):
+            for key, value in self._default_values.items():
+                if (not params.has_key(key)):
+                    params[key] = value         
         
         ev = event.Event('track_before_create', params)
         if (self._mh.fire_event(ev) > 0):
@@ -318,11 +371,10 @@ class Client():
             
         if (ev.will_run_default()): 
             
-            record = self.read(id)[1]
+            record = self.read(id, fields='all', remap=False)[1]
             if (record == None or len(record) == 0):
                 self._mh.dmsg('htk_on_error', self._mh._trn.msg('track_unknown_record', id), self._mh.fromhere()) 
                 return None
-            
             params_old = record
             for key, value in params.items():
                 if (self._mapping.has_key(key)):
@@ -385,12 +437,13 @@ class Client():
             
         return result              
         
-    def _parse_record(self, rec, fields=None): 
+    def _parse_record(self, rec, fields=None, remap=True): 
         """Method parses record
         
         Args: 
            rec (xml): record in xml form
            fields (list): fields to be returned, default all 
+           remap (bool): enable field mapping
              
         Returns:
            dict: parsed record
@@ -400,32 +453,33 @@ class Client():
         record = {}
         
         for key, value in rec_fields.items():
-            if (key in self._mapping.values()):
-                key = self._mapping.keys()[self._mapping.values().index(key)]
+            key_new = key
+            if (remap and key in self._mapping.values()):
+                key_new = self._mapping.keys()[self._mapping.values().index(key)]
             if ((fields == None or key in fields) and hasattr(rec, key)):
                 if (value == 'standard'):
-                    record[key] = getattr(rec, key)
+                    record[key_new] = getattr(rec, key)
                 elif (value == 'date'):
-                    record[key] = str(getattr(rec, key))
+                    record[key_new] = str(getattr(rec, key))
                 elif (value == 'object_ref'):
                     attr = getattr(rec, key)
                     id = attr.id if (hasattr(attr, 'id')) else None
                     name = attr.name if (hasattr(attr, 'name')) else None
-                    record[key] = {'id': id, 'name': name}
+                    record[key_new] = {'id': id, 'name': name}
                 elif (value == 'object_ref_array'):
                     array = []
                     for item in getattr(rec, key):
                         id = item.id if (hasattr(item, 'id')) else None
                         name = item.name if (hasattr(item, 'name')) else None
                         array.append({'id': id, 'name': name})
-                    record[key] = array
+                    record[key_new] = array
                 elif (value == 'account_data'):
                     attr = getattr(rec, key)
                     id = attr.id if (hasattr(attr, 'id')) else None
                     name = attr.name if (hasattr(attr, 'name')) else None
                     real_name = attr.real_name if (hasattr(attr, 'real_name')) else None
                     email = attr.email if (hasattr(attr, 'email')) else None
-                    record[key] = {'id': id, 'name': name, 'real_name': real_name, 'email': email}
+                    record[key_new] = {'id': id, 'name': name, 'real_name': real_name, 'email': email}
                 elif (value == 'account_data_array'):
                     array = []
                     for item in getattr(rec, key):
@@ -443,9 +497,9 @@ class Client():
                         download_url = item.download_url if (hasattr(item, 'download_url')) else None   
                         user_id = item.user_id if (hasattr(item, 'user_id')) else None                          
                         array.append({'id': id, 'filename': filename, 'size': size,
-                                      'contet_type': item.content_type, 'date_submitted': item.date_submitted,
+                                      'content_type': item.content_type, 'date_submitted': item.date_submitted,
                                       'download_url': download_url, 'user_id': user_id})
-                    record[key] = array
+                    record[key_new] = array
                 elif (value == 'relationship_data_array'):
                     array = []
                     for item in getattr(rec, key):
@@ -455,7 +509,7 @@ class Client():
                         target_id = item.target_id if (hasattr(item, 'target_id')) else None
                         array.append({'id': id, 'type': {'id': type_id, 'name': type_name},
                                       'target_id': target_id})
-                    record[key] = array
+                    record[key_new] = array
         
         return record    
     
@@ -470,7 +524,12 @@ class Client():
                 
         """  
         
-        root = Element('issue')   
+        root = Element('issue')  
+
+        if (not params.has_key('project')):
+            elem = SubElement(root, 'project')
+            SubElement(elem, 'id').text = str(self._project_id)
+            SubElement(elem, 'name').text = self._project          
            
         for key, value in params.items():
             if (self._mapping.has_key(key)):
