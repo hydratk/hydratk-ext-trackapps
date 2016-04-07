@@ -79,7 +79,6 @@ class Client():
     _passw = None
     _project = None
     _project_id = None
-    _mapping = {}
     _return_fields = None
     _default_values = {}
     
@@ -94,8 +93,6 @@ class Client():
         self._client = SOAPClient()  
 
         cfg = self._mh.cfg['Extensions']['TrackApps']['mantis'] 
-        if (cfg.has_key('mapping') and cfg['mapping'] != None):
-            self._mapping = cfg['mapping'] 
         if (cfg.has_key('return_fields') and cfg['return_fields'] != None):
             self._return_fields = cfg['return_fields'].split(',') 
         if (cfg.has_key('default_values') and cfg['default_values'] != None):
@@ -143,13 +140,7 @@ class Client():
     def project_id(self):
         """ project_id property getter """
         
-        return self._project_id
-    
-    @property
-    def mapping(self):
-        """ mapping property getter """
-        
-        return self._mapping  
+        return self._project_id 
     
     @property
     def return_fields(self):
@@ -228,7 +219,7 @@ class Client():
         
         return res                 
     
-    def read(self, id=None, fields=None, page=-1, per_page=-1, remap=True): 
+    def read(self, id=None, fields=None, page=-1, per_page=-1): 
         """Method reads records
         
         Args: 
@@ -236,7 +227,6 @@ class Client():
            fields (list): fields to be returned, default all
            page (int): page number
            per_page (int): records per page
-           remap (bool): enable field mapping
              
         Returns:
            tuple: result (bool), records (list of dictionary)
@@ -251,11 +241,7 @@ class Client():
         self._mh.dmsg('htk_on_debug_info', self._mh._trn.msg('track_reading', message), self._mh.fromhere()) 
         
         if (fields == None and self._return_fields != None):
-            fields = []
-            for key in self._return_fields:
-                if (key in self._mapping.values()):
-                    key = self._mapping.keys()[self._mapping.values().index(key)] 
-                fields.append(key) 
+            fields = self._return_fields
         elif (fields == 'all'):
             fields = None       
         
@@ -287,12 +273,12 @@ class Client():
             records = None
             if (res != None):
                 if (id != None):
-                    records = self._parse_record(res, fields, remap)
+                    records = self._parse_record(res, fields)
                     cnt = 1
                 else:
                     records = []
                     for item in res:
-                        records.append(self._parse_record(item, fields, remap))
+                        records.append(self._parse_record(item, fields))
                     cnt = len(records)
                 result = True
                 
@@ -371,14 +357,12 @@ class Client():
             
         if (ev.will_run_default()): 
             
-            record = self.read(id, fields='all', remap=False)[1]
+            record = self.read(id, fields='all')[1]
             if (record == None or len(record) == 0):
                 self._mh.dmsg('htk_on_error', self._mh._trn.msg('track_unknown_record', id), self._mh.fromhere()) 
                 return None
             params_old = record
             for key, value in params.items():
-                if (self._mapping.has_key(key)):
-                    key = self._mapping[key]
                 params_old[key] = value
             
             root = Element(config['ns']+'mc_issue_update')
@@ -437,13 +421,12 @@ class Client():
             
         return result              
         
-    def _parse_record(self, rec, fields=None, remap=True): 
+    def _parse_record(self, rec, fields=None): 
         """Method parses record
         
         Args: 
            rec (xml): record in xml form
            fields (list): fields to be returned, default all 
-           remap (bool): enable field mapping
              
         Returns:
            dict: parsed record
@@ -453,33 +436,30 @@ class Client():
         record = {}
         
         for key, value in rec_fields.items():
-            key_new = key
-            if (remap and key in self._mapping.values()):
-                key_new = self._mapping.keys()[self._mapping.values().index(key)]
             if ((fields == None or key in fields) and hasattr(rec, key)):
                 if (value == 'standard'):
-                    record[key_new] = getattr(rec, key)
+                    record[key] = getattr(rec, key)
                 elif (value == 'date'):
-                    record[key_new] = str(getattr(rec, key))
+                    record[key] = str(getattr(rec, key))
                 elif (value == 'object_ref'):
                     attr = getattr(rec, key)
                     id = attr.id if (hasattr(attr, 'id')) else None
                     name = attr.name if (hasattr(attr, 'name')) else None
-                    record[key_new] = {'id': id, 'name': name}
+                    record[key] = {'id': id, 'name': name}
                 elif (value == 'object_ref_array'):
                     array = []
                     for item in getattr(rec, key):
                         id = item.id if (hasattr(item, 'id')) else None
                         name = item.name if (hasattr(item, 'name')) else None
                         array.append({'id': id, 'name': name})
-                    record[key_new] = array
+                    record[key] = array
                 elif (value == 'account_data'):
                     attr = getattr(rec, key)
                     id = attr.id if (hasattr(attr, 'id')) else None
                     name = attr.name if (hasattr(attr, 'name')) else None
                     real_name = attr.real_name if (hasattr(attr, 'real_name')) else None
                     email = attr.email if (hasattr(attr, 'email')) else None
-                    record[key_new] = {'id': id, 'name': name, 'real_name': real_name, 'email': email}
+                    record[key] = {'id': id, 'name': name, 'real_name': real_name, 'email': email}
                 elif (value == 'account_data_array'):
                     array = []
                     for item in getattr(rec, key):
@@ -499,7 +479,7 @@ class Client():
                         array.append({'id': id, 'filename': filename, 'size': size,
                                       'content_type': item.content_type, 'date_submitted': item.date_submitted,
                                       'download_url': download_url, 'user_id': user_id})
-                    record[key_new] = array
+                    record[key] = array
                 elif (value == 'relationship_data_array'):
                     array = []
                     for item in getattr(rec, key):
@@ -509,7 +489,7 @@ class Client():
                         target_id = item.target_id if (hasattr(item, 'target_id')) else None
                         array.append({'id': id, 'type': {'id': type_id, 'name': type_name},
                                       'target_id': target_id})
-                    record[key_new] = array
+                    record[key] = array
         
         return record    
     
@@ -532,8 +512,6 @@ class Client():
             SubElement(elem, 'name').text = self._project          
            
         for key, value in params.items():
-            if (self._mapping.has_key(key)):
-                key = self._mapping[key] 
             type = rec_fields[key]   
 
             if (type in ('standard', 'date')):
@@ -541,35 +519,35 @@ class Client():
             elif (type == 'object_ref'):
                 elem = SubElement(root, key)
                 SubElement(elem, 'id').text = str(value['id']) if (value.has_key('id')) else None
-                SubElement(elem, 'name').text = value['name'] if (value.has_key('name')) else None
+                SubElement(elem, 'name').text = value['name'].decode('utf8')  if (value.has_key('name')) else None
             elif (type == 'object_ref_array'):
                 elem = SubElement(root, key)
                 for item in value:
                     el_item = Element('item')
                     SubElement(elem, 'id').text = item['id'] if (item.has_key('id')) else None
-                    SubElement(elem, 'name').text = item['name'] if (item.has_key('name')) else None
+                    SubElement(elem, 'name').text = item['name'].decode('utf8')  if (item.has_key('name')) else None
                     elem.append(item)
             elif (type == 'account_data'):
                 elem = SubElement(root, key)
                 SubElement(elem, 'id').text = str(value['id']) if (value.has_key('id')) else None
-                SubElement(elem, 'name').text = value['name'] if (value.has_key('name')) else None
-                SubElement(elem, 'real_name').text = value['real_name'] if (value.has_key('real_name')) else None
-                SubElement(elem, 'email').text = value['email'] if (value.has_key('email')) else None                
+                SubElement(elem, 'name').text = value['name'].decode('utf8')  if (value.has_key('name')) else None
+                SubElement(elem, 'real_name').text = value['real_name'].decode('utf8')  if (value.has_key('real_name')) else None
+                SubElement(elem, 'email').text = value['email'].decode('utf8')  if (value.has_key('email')) else None                
             elif (type == 'account_data_array'):
                 elem = SubElement(root, key)
                 for item in value:
                     el_item = Element('item')
                     SubElement(elem, 'id').text = str(item['id']) if (item.has_key('id')) else None
-                    SubElement(elem, 'name').text = item['name'] if (item.has_key('name')) else None
-                    SubElement(elem, 'real_name').text = item['real_name'] if (item.has_key('real_name')) else None
-                    SubElement(elem, 'email').text = item['email'] if (item.has_key('email')) else None                    
+                    SubElement(elem, 'name').text = item['name'].decode('utf8')  if (item.has_key('name')) else None
+                    SubElement(elem, 'real_name').text = item['real_name'].decode('utf8')  if (item.has_key('real_name')) else None
+                    SubElement(elem, 'email').text = item['email'].decode('utf8')  if (item.has_key('email')) else None                    
                     elem.append(item)           
             elif (type == 'attachment_data_array'):
                 elem = SubElement(root, key)
                 for item in value:
                     el_item = Element('item')
                     SubElement(elem, 'id').text = str(item['id']) if (item.has_key('id')) else None
-                    SubElement(elem, 'filename').text = item['filename'] if (item.has_key('filename')) else None
+                    SubElement(elem, 'filename').text = item['filename'].decode('utf8')  if (item.has_key('filename')) else None
                     SubElement(elem, 'size').text = item['size'] if (item.has_key('size')) else None
                     SubElement(elem, 'download_url').text = item['download_url'] if (item.has_key('download_url')) else None   
                     SubElement(elem, 'user_id').text = item['user_id'] if (item.has_key('user_id')) else None                   
@@ -582,7 +560,7 @@ class Client():
                     if (item.has_key('type')):
                         el_type = SubElement(el_item)
                         SubElement(el_type, 'id').text = str(item['type']['id']) if (item['type'].has_key('id')) else None
-                        SubElement(el_type, 'name').text = item['type']['name'] if (item['type'].has_key('name')) else None                        
+                        SubElement(el_type, 'name').text = item['type']['name'].decode('utf8')  if (item['type'].has_key('name')) else None                        
                     SubElement(elem, 'target_id').text = item['target_id'] if (item.has_key('target_id')) else None                 
                     elem.append(item)  
                     

@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
-"""This code is part of TrackApps extension
+'''This code is part of TrackApps extension
 
 .. module:: trackapps.trackapps
    :platform: Unix
    :synopsis: Extension with interface to bugtracking and test management systems
 .. moduleauthor:: Petr Rašek <bowman@hydratk.org>
 
-"""
+'''
 
 from hydratk.core import extension
 from hydratk.lib.console.commandlinetool import CommandlineTool
@@ -48,6 +48,7 @@ class Extension(extension.Extension):
         self._mh.match_long_option('url', True) 
         self._mh.match_long_option('user', True) 
         self._mh.match_long_option('passw', True)
+        self._mh.match_long_option('dev-key', True)
         self._mh.match_long_option('domain', True)
         self._mh.match_long_option('project', True)
         self._mh.match_long_option('id', True)
@@ -59,10 +60,11 @@ class Extension(extension.Extension):
         self._mh.match_long_option('page', True)
         self._mh.match_long_option('per-page', True)
         self._mh.match_long_option('params', True)
-        self._mh.match_long_option('qc-path', True)
+        self._mh.match_long_option('path', True)
+        self._mh.match_long_option('steps', True)
     
     def init_client(self, app, *args, **kwargs):
-        """Client factory method
+        '''Client factory method
         
         Args:            
             app (str): application, qc|bugzilla|mantis|trac|jira|testlink
@@ -75,7 +77,7 @@ class Extension(extension.Extension):
         Raises:
             error: ValueError
                 
-        """       
+        '''       
 
         self._app = app.lower()        
         if (apps.has_key(self._app)):
@@ -91,9 +93,9 @@ class Extension(extension.Extension):
             return None  
         
     def handle_track(self):
-        """Method handles command track
+        '''Method handles command track
                 
-        """             
+        '''             
         
         self._mh.dmsg('htk_on_debug_info', self._mh._trn.msg('track_received_cmd', 'track'), self._mh.fromhere()) 
 
@@ -121,23 +123,39 @@ class Extension(extension.Extension):
                     url = self._cfg['url']
                 else:
                     print ('Enter url') 
-                    url = raw_input(":")
+                    url = raw_input(':')
             
             user = CommandlineTool.get_input_option('--user')      
-            if (not user):
+            if (not user and self._app != 'testlink'):
                 if (self._cfg.has_key('user') and self._cfg['user'] != None):
                     user = self._cfg['user']
                 else:
                     print ('Enter username') 
-                    user = raw_input(":") 
+                    user = raw_input(':') 
               
             passw = CommandlineTool.get_input_option('--passw')         
-            if (not passw):
+            if (not passw and self._app != 'testlink'):
                 if (self._cfg.has_key('passw') and self._cfg['passw'] != None):
                     passw = self._cfg['passw']
                 else:
                     print ('Enter password') 
-                    passw = raw_input(":")      
+                    passw = raw_input(':')      
+                    
+            passw = CommandlineTool.get_input_option('--passw')         
+            if (not passw and self._app != 'testlink'):
+                if (self._cfg.has_key('passw') and self._cfg['passw'] != None):
+                    passw = self._cfg['passw']
+                else:
+                    print ('Enter password') 
+                    passw = raw_input(':')  
+                    
+            dev_key = CommandlineTool.get_input_option('--dev-key')         
+            if (not dev_key and self._app == 'testlink'):
+                if (self._cfg.has_key('dev_key') and self._cfg['dev_key'] != None):
+                    dev_key = self._cfg['dev_key']
+                else:
+                    print ('Enter dev_key') 
+                    dev_key = raw_input(':')                                         
                     
             domain = CommandlineTool.get_input_option('--domain')         
             if (not domain and self._app == 'qc'):
@@ -145,22 +163,32 @@ class Extension(extension.Extension):
                     domain = self._cfg['domain']
                 else:
                     print ('Enter domain') 
-                    domain = raw_input(":")   
+                    domain = raw_input(':')   
                     
             project = CommandlineTool.get_input_option('--project')         
-            if (not project and self._app in ['qc', 'mantis', 'trac', 'jira']):
+            if (not project and self._app in ['qc', 'mantis', 'trac', 'jira', 'testlink']):
                 if (self._cfg.has_key('project') and self._cfg['project'] != None):
                     project = self._cfg['project']
                 else:
                     print ('Enter project') 
-                    project = raw_input(":") 
+                    project = raw_input(':') 
                     
             self._entity = CommandlineTool.get_input_option('--type')
             if (not self._entity):
                 self._entity = 'defect'
-            if (self._entity not in ['defect', 'test-folder', 'test', 'test-set-folder', 'test-set', 'test-instance']):
+            if (self._app == 'qc' and self._entity not in ['defect', 'test-folder', 'test', 'test-set-folder', 'test-set', 'test-instance']):
                 print ('Type not in defect|test-folder|test|test-set-folder|test-set|test-instance')
-                return                                                                          
+                return
+            elif (self._app == 'testlink'):
+                if (self._entity not in ['test', 'test-suite', 'test-plan', 'build']):
+                    print ('Type not in test|test-suite|test-plan|build')
+                    return  
+                elif (action == 'read' and self._entity not in ['test', 'test-suite', 'test-plan']):
+                    print ('Type not in test|test-suite|test-plan for action read')
+                    return
+                elif (action == 'update' and self._entity not in ['test', 'test-plan']):
+                    print ('Type not in test|test-plan for action update') 
+                    return                                                               
             
             if (self._app == 'qc'):    
                 res = self._client.connect(url, user, passw, domain, project)
@@ -168,6 +196,8 @@ class Extension(extension.Extension):
                 res = self._client.connect(url, user, passw)
             elif (self._app in ['mantis', 'trac', 'jira']):
                 res = self._client.connect(url, user, passw, project)
+            elif (self._app == 'testlink'):
+                res = self._client.connect(url, dev_key, project)
                 
             if (not res):
                 print ('Connection error')
@@ -186,9 +216,9 @@ class Extension(extension.Extension):
                 self._client.disconnect()  
             
     def read(self):
-        """Method handles read action
+        '''Method handles read action
                 
-        """            
+        '''            
         
         id = CommandlineTool.get_input_option('--id')
         if (not id):
@@ -209,8 +239,6 @@ class Extension(extension.Extension):
             for param in order_by_in:
                 rec = param.split(':')
                 key = rec[0]
-                if (self._client.mapping.has_key(key)):
-                    key = self._client.mapping[key]
                 order_by[key] = rec[1]
         else:
             order_by = None                     
@@ -233,18 +261,36 @@ class Extension(extension.Extension):
         
         if (self._app == 'qc'):
             if (self._entity in ['test-folder', 'test-set-folder']):
-                qc_path = CommandlineTool.get_input_option('--qc-path')
-                if (not qc_path):
-                    print ('Enter qc path') 
-                    qc_path = raw_input(":")
-                res, records = self._client.read_test_folder(qc_path, self._entity)
+                path = CommandlineTool.get_input_option('--path')
+                if (not path):
+                    print ('Enter path') 
+                    path = raw_input(':')
+                res, records = self._client.read_test_folder(path, self._entity)
             elif (self._entity == 'test-set'):
                 if (not id):
                     print ('Enter test set id') 
-                    id = raw_input(":")
+                    id = raw_input(':')
                 res, records = self._client.read_test_set(int(id)) 
             else:
                 res, records = self._client.read(id, self._entity, fields, query, order_by, limit, offset)   
+                
+        elif (self._app == 'testlink'):
+            if (self._entity == 'test-suite'):
+                path = CommandlineTool.get_input_option('--path')
+                if (not path):
+                    print ('Enter path') 
+                    path = raw_input(':')
+                res, records = self._client.read_test_suite(path, fields=fields) 
+            elif (self._entity == 'test-plan'):
+                if (not id):
+                    print ('Enter plan id') 
+                    id = raw_input(':')    
+                res, records = self._client.read_test_plan(plan_id=id, fields=fields)
+            elif (self._entity == 'test'):
+                if (not id):
+                    print ('Enter test id') 
+                    id = raw_input(':')    
+                res, records = self._client.read_test(id, fields)                                          
                     
         elif (self._app == 'bugzilla'):                
             res, records = self._client.read(id, fields, query, limit, offset)
@@ -267,11 +313,11 @@ class Extension(extension.Extension):
             
        
     def create(self):
-        """Method handles create action
+        '''Method handles create action
                 
-        """              
+        '''              
         
-        if (self._app == 'qc'):
+        if (self._app in ['qc', 'testlink']):
             params = {}
             if (self._client._default_values.has_key(self._entity)):
                 params = self._client._default_values[self._entity]
@@ -284,8 +330,6 @@ class Extension(extension.Extension):
             for param in params_in:
                 rec = param.split(':')
                 key = rec[0]
-                if (self._client.mapping.has_key(key)):
-                    key = self._client.mapping[key]
                 params[key] = rec[1]
                 
         input = CommandlineTool.get_input_option('--input')
@@ -317,22 +361,12 @@ class Extension(extension.Extension):
                         lov[key] = value.split(',')                
                             
             for field in fields:
-                                
-                field_remap = field
-                if (self._cfg.has_key('mapping') and self._cfg['mapping'] != None):
-                    mapping = self._cfg['mapping']
-                    if (self._app == 'qc'):
-                        if (mapping.has_key(self._entity) and mapping[self._entity] != None
-                            and field in mapping[self._entity].values()):
-                            field_remap = mapping[self._entity].keys()[mapping[self._entity].values().index(field)]
-                    elif (field in mapping.values()):
-                        field_remap = mapping.keys()[mapping.values().index(field)]
                 
                 if (not params.has_key(field)):
-                    print ('Enter required field: {0}'.format(field_remap)) 
+                    print ('Enter required field: {0}'.format(field)) 
                     
                     if (not lov.has_key(field)):                        
-                        value = raw_input(":")
+                        value = raw_input(':')
                         params[field] = value
                         
                     else:
@@ -352,42 +386,96 @@ class Extension(extension.Extension):
                             if (idx >= 0 and idx < cnt):
                                 valid = True
                             else:
-                                print ('Wrong choice, enter required field: {0}'.format(field_remap))
+                                print ('Wrong choice, enter required field: {0}'.format(field))
                                 
                         params[field] = values[idx]
+                        
+        steps_in = CommandlineTool.get_input_option('--steps') 
+        steps = [] 
+        if (steps_in != False):           
+            steps_in = steps_in.split('|')
+            for step_in in steps_in:
+                step = {}
+                for param in step_in.split(','):
+                    rec = param.split(':')
+                    key = rec[0]
+                    step[key] = rec[1]
+                steps.append(step)                              
         
         if (self._app == 'qc'): 
             if (self._entity in ('defect', 'test-instance')):           
                 id = self._client.create(self._entity, params)
             else:
-                qc_path = CommandlineTool.get_input_option('--qc-path')
-                if (not qc_path):
-                    print ('Enter qc path') 
-                    qc_path = raw_input(":")
+                path = CommandlineTool.get_input_option('--path')
+                if (not path):
+                    print ('Enter path') 
+                    path = raw_input(':')
                 if (self._entity == 'test'):
-                    id = self._client.create_test(qc_path, params)
+                    id = self._client.create_test(path, params)
                 elif (self._entity == 'test-set'):
-                    id = self._client.create_test_set(qc_path, params)
+                    id = self._client.create_test_set(path, params)
                 else:
-                    folders = qc_path.split('/')
+                    folders = path.split('/')
                     id = self._client.create_test_folder('/'.join(folders[:-1]), folders[-1], self._entity)
+                    
+        elif (self._app == 'testlink'):
+            if (self._entity == 'test-suite'):
+                path = CommandlineTool.get_input_option('--path')
+                if (not path):
+                    print ('Enter path') 
+                    path = raw_input(':')                                
+                details = params['details'] if (params.has_key('details')) else None
+                
+                folders = path.split('/')
+                id = self._client.create_test_suite('/'.join(folders[:-1]), folders[-1], details)
+                
+            elif (self._entity == 'test-plan'):
+                name = params['name'] if (params.has_key('name')) else None               
+                if (not params.has_key('name')):
+                    print ('Enter name')
+                    name = raw_input(':')
+                notes = params['notes'] if (params.has_key('notes')) else None  
+                
+                id = self._client.create_test_plan(name, notes)
+                
+            elif (self._entity == 'build'):
+                plan = params['plan'] if (params.has_key('plan')) else None               
+                if (not params.has_key('plan')):
+                    print ('Enter plan id')
+                    plan = raw_input(':')                
+                name = params['name'] if (params.has_key('name')) else None               
+                if (not params.has_key('name')):
+                    print ('Enter name')
+                    name = raw_input(':')
+                notes = params['notes'] if (params.has_key('notes')) else None                  
+                
+                id = self._client.create_build(plan, name, notes)
+                
+            elif (self._entity == 'test'):
+                path = CommandlineTool.get_input_option('--path')
+                if (not path):
+                    print ('Enter path') 
+                    path = raw_input(':')
+                    
+                id = self._client.create_test(path, params, steps)                                                          
                     
         else:
             id = self._client.create(params)
+            
         if (id != None):
             print ('Record {0} created'.format(id))
         else:
             print ('Create error')
     
     def update(self):
-        """Method handles update action
+        '''Method handles update action
                 
-        """              
+        '''              
         
         id = CommandlineTool.get_input_option('--id')
         if (not id):
             print ('Enter id') 
-            id = raw_input(":")        
+            id = raw_input(':')        
         
         params_in = CommandlineTool.get_input_option('--params')
         if (not params_in):
@@ -406,22 +494,43 @@ class Extension(extension.Extension):
         
         if (self._app == 'qc'):
             res = self._client.update(id, self._entity, params)
+        elif (self._app == 'testlink'):
+            if (self._entity == 'test-plan'): 
+                test_id = params['test'] if (params.has_key('test')) else None               
+                if (not params.has_key('test')):
+                    print ('Enter test id')
+                    test_id = raw_input(':')
+
+                res = self._client.add_test_to_plan(test=test_id, plan_id=id)
+                
+            elif (self._entity == 'test'):
+                plan_id = params['plan'] if (params.has_key('plan')) else None
+                if (not params.has_key('plan')):
+                    print ('Enter plan id')
+                    plan_id = raw_input(':')
+                status = params['status'] if (params.has_key('status')) else 'p'
+                notes = params['notes'] if (params.has_key('notes')) else None
+                build_id = params['build'] if (params.has_key('build')) else None
+                    
+                res = self._client.update_test_execution(id, status, notes, plan_id=plan_id, build_id=build_id)
+                
         else:            
             res = self._client.update(id, params)
+            
         if (res):
             print ('Record {0} updated'.format(id))
         else:
             print ('Update error')        
     
     def delete(self):
-        """Method handles delete action
+        '''Method handles delete action
                 
-        """              
+        '''              
         
         id = CommandlineTool.get_input_option('--id')
         if (not id):
             print ('Enter id') 
-            id = raw_input(":")         
+            id = raw_input(':')         
         
         if (self._app == 'qc'):
             res = self._client.delete(id, self._entity)

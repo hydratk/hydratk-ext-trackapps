@@ -41,7 +41,6 @@ class Client():
     _user = None
     _passw = None
     _token = None
-    _mapping = {}
     _return_fields = None
     _default_values = {}
     
@@ -56,8 +55,6 @@ class Client():
         self._client = RESTClient()
          
         cfg = self._mh.cfg['Extensions']['TrackApps']['bugzilla'] 
-        if (cfg.has_key('mapping') and cfg['mapping'] != None):
-            self._mapping = cfg['mapping'] 
         if (cfg.has_key('return_fields') and cfg['return_fields'] != None):
             self._return_fields = cfg['return_fields'].split(',') 
         if (cfg.has_key('default_values') and cfg['default_values'] != None):
@@ -97,13 +94,7 @@ class Client():
     def token(self):
         """ token property getter """
         
-        return self._token  
-    
-    @property
-    def mapping(self):
-        """ mapping property getter """
-        
-        return self._mapping         
+        return self._token         
     
     @property
     def return_fields(self):
@@ -226,11 +217,7 @@ class Client():
         self._mh.dmsg('htk_on_debug_info', self._mh._trn.msg('track_reading', message), self._mh.fromhere()) 
         
         if (fields == None and self._return_fields != None):
-            fields = []
-            for key in self._return_fields:
-                if (key in self._mapping.values()):
-                    key = self._mapping.keys()[self._mapping.values().index(key)] 
-                fields.append(key)     
+            fields = self._return_fields
         
         ev = event.Event('track_before_read', id, fields, query, limit, offset)
         if (self._mh.fire_event(ev) > 0):
@@ -264,9 +251,7 @@ class Client():
                 records = []
                 for i in xrange(0, cnt):
                     record = {}
-                    for key, value in body['bugs'][i].items():
-                        if (key in self._mapping.values()):
-                            key = self._mapping.keys()[self._mapping.values().index(key)]                     
+                    for key, value in body['bugs'][i].items():                   
                         if (fields == None or key in fields):
                             record[key] = value                     
                     records.append(record)       
@@ -310,8 +295,6 @@ class Client():
             
             root = {}
             for key, value in params.items():          
-                if (self._mapping.has_key(key)):
-                    key = self._mapping[key]
                 root[key] = value         
             root['token'] = self._token 
             body = write(root)
@@ -358,8 +341,6 @@ class Client():
             
             root = {}
             for key, value in params.items():          
-                if (self._mapping.has_key(key)):
-                    key = self._mapping[key]
                 root[key] = value         
             root['token'] = self._token  
             body = write(root)

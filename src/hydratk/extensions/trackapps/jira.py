@@ -42,7 +42,6 @@ class Client():
     _passw = None
     _project = None
     _cookie = None
-    _mapping = {}
     _return_fields = None
     _default_values = {}
     
@@ -57,8 +56,6 @@ class Client():
         self._client = RESTClient() 
 
         cfg = self._mh.cfg['Extensions']['TrackApps']['jira'] 
-        if (cfg.has_key('mapping') and cfg['mapping'] != None):
-            self._mapping = cfg['mapping'] 
         if (cfg.has_key('return_fields') and cfg['return_fields'] != None):
             self._return_fields = cfg['return_fields'].split(',') 
         if (cfg.has_key('default_values') and cfg['default_values'] != None):
@@ -107,12 +104,6 @@ class Client():
         """ cookie property getter """
         
         return self._cookie  
-    
-    @property
-    def mapping(self):
-        """ mapping property getter """
-        
-        return self._mapping  
     
     @property
     def return_fields(self):
@@ -239,12 +230,7 @@ class Client():
         self._mh.dmsg('htk_on_debug_info', self._mh._trn.msg('track_reading', message), self._mh.fromhere()) 
         
         if (fields == None and self._return_fields != None):
-            fields = []
-            for key in self._return_fields:
-                if (key in self._mapping.values()):
-                    key = self._mapping.keys()[self._mapping.values().index(key)] 
-                fields.append(key)        
-        
+            fields = self._return_fields
         ev = event.Event('track_before_read', id, fields, query, limit, offset)
         if (self._mh.fire_event(ev) > 0):
             id = ev.argv(0)
@@ -263,10 +249,7 @@ class Client():
             if (fields != None and len(fields) > 0):
                 fields_new = []
                 for field in fields:
-                    if (self._mapping.has_key(field)):
-                        fields_new.append(self._mapping[field])   
-                    else:
-                        fields_new.append(field)                 
+                    fields_new.append(field)                 
                 body['fields'] = fields_new           
             if (query != None):
                 body['jql'] += 'and ' + query
@@ -289,9 +272,7 @@ class Client():
                     record = {}
                     if (fields == None or 'id' in fields):
                         record['id'] = body['issues'][i]['key']
-                    for key, value in body['issues'][i]['fields'].items():
-                        if (key in self._mapping.values()):
-                            key = self._mapping.keys()[self._mapping.values().index(key)]                     
+                    for key, value in body['issues'][i]['fields'].items():                 
                         if (fields == None or key in fields):
                             record[key] = value                                         
                     records.append(record)       
@@ -335,8 +316,6 @@ class Client():
             
             root = {'fields': {}}
             for key, value in params.items():          
-                if (self._mapping.has_key(key)):
-                    key = self._mapping[key]
                 root['fields'][key] = value   
             if (not root['fields'].has_key('project')):
                 root['fields']['project'] = {'key': self._project}
@@ -388,8 +367,6 @@ class Client():
             
             root = {'fields': {}}
             for key, value in params.items():          
-                if (self._mapping.has_key(key)):
-                    key = self._mapping[key]
                 root['fields'][key] = value                  
             body = write(root)
              

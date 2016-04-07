@@ -50,8 +50,7 @@ class Client():
     _domain = None
     _project = None
     _cookie = None
-    _mapping = {}
-    _return_fields = None
+    _return_fields = {}
     _default_values = {}
     
     def __init__(self):
@@ -65,8 +64,6 @@ class Client():
         self._client = RESTClient()   
         
         cfg = self._mh.cfg['Extensions']['TrackApps']['qc'] 
-        if (cfg.has_key('mapping') and cfg['mapping'] != None):
-            self._mapping = cfg['mapping'] 
         if (cfg.has_key('return_fields') and cfg['return_fields'] != None):
             self._return_fields = cfg['return_fields']
             for key, value in cfg['return_fields'].items():
@@ -125,13 +122,7 @@ class Client():
     def cookie(self):
         """ cookie property getter """
         
-        return self._cookie  
-    
-    @property
-    def mapping(self):
-        """ mapping property getter """
-        
-        return self._mapping  
+        return self._cookie   
     
     @property
     def return_fields(self):
@@ -269,11 +260,7 @@ class Client():
         self._mh.dmsg('htk_on_debug_info', self._mh._trn.msg('track_reading', message), self._mh.fromhere()) 
         
         if (fields == None and self._return_fields.has_key(entity) and self._return_fields[entity] != None):
-            fields = []
-            for key in self._return_fields[entity]:
-                if (self._mapping.has_key(entity) and key in self._mapping[entity].values()):
-                    key = self._mapping[entity].keys()[self._mapping[entity].values().index(key)] 
-                fields.append(key) 
+            fields = self._return_fields[entity]
         
         ev = event.Event('track_before_read', entity, id, fields, query, order_by, limit, offset)
         if (self._mh.fire_event(ev) > 0):
@@ -291,8 +278,6 @@ class Client():
             if (fields != None and len(fields) > 0):
                 param = ""
                 for field in fields:
-                    if (self._mapping.has_key(entity) and self._mapping[entity].has_key(field)):
-                        field = self._mapping[entity][field]
                     param += field + ','
                 params['fields'] = param[:-1]
             if (query != None):
@@ -317,32 +302,29 @@ class Client():
             res, body = self._client.send_request(url, method='GET', headers=headers, params=params,
                                                   content_type='xml')                      
             
-            result = False
-            records = None
-            if (res == 200):
-                records = []
-                if (int(body.get('TotalResults')) > 0):
-                    for ent in body.Entity:                    
-                        record = {}
-                        for field in ent.Fields.Field:
-                            key = field.get('Name')
-                            if (self._mapping.has_key(entity) and self._mapping[entity] != None 
-                                and key in self._mapping[entity].values()):
-                                key = self._mapping[entity].keys()[self._mapping[entity].values().index(key)]
-                            value = field.Value if (hasattr(field, 'Value')) else None
-                            if (fields == None or key in fields):
-                                record[key] = value 
-                        records.append(record)       
+        result = False
+        records = None
+        if (res == 200):
+            records = []
+            if (int(body.get('TotalResults')) > 0):
+                for ent in body.Entity:                    
+                    record = {}
+                    for field in ent.Fields.Field:
+                        key = field.get('Name')
+                        value = field.Value if (hasattr(field, 'Value')) else None
+                        if (fields == None or key in fields):
+                            record[key] = value 
+                    records.append(record)       
                             
-                self._mh.dmsg('htk_on_debug_info', self._mh._trn.msg('track_read', len(records)), self._mh.fromhere())            
-                ev = event.Event('track_after_read')
-                self._mh.fire_event(ev)   
-                result = True   
-            else:
-                error = body.Title if (hasattr(body, 'Title')) else body
-                self._mh.dmsg('htk_on_error', self._mh._trn.msg('track_error', res, error), self._mh.fromhere())           
+            self._mh.dmsg('htk_on_debug_info', self._mh._trn.msg('track_read', len(records)), self._mh.fromhere())            
+            ev = event.Event('track_after_read')
+            self._mh.fire_event(ev)   
+            result = True   
+        else:
+            error = body.Title if (hasattr(body, 'Title')) else body
+            self._mh.dmsg('htk_on_error', self._mh._trn.msg('track_error', res, error), self._mh.fromhere())           
             
-            return (result, records)   
+        return (result, records)   
         
     def create(self, entity='defect', params={}):  
         """Method creates record
@@ -383,10 +365,8 @@ class Client():
             el_fields = SubElement(root, 'Fields')
             for key, value in params.items():
                 elem = SubElement(el_fields, 'Field')            
-                if (self._mapping.has_key(entity) and self._mapping[entity].has_key(key)):
-                    key = self._mapping[entity][key]
                 elem.set('Name', key)
-                SubElement(elem, 'Value').text = str(value)           
+                SubElement(elem, 'Value').text = str(value).decode('utf8')           
             body = tostring(root)
              
             url = self._url + config['rest'].format(self._domain, self._project, entity)
@@ -441,10 +421,8 @@ class Client():
             el_fields = SubElement(root, 'Fields')
             for key, value in params.items():
                 elem = SubElement(el_fields, 'Field')            
-                if (self._mapping.has_key(entity) and self._mapping[entity].has_key(key)):
-                    key = self._mapping[entity][key]
                 elem.set('Name', key)
-                SubElement(elem, 'Value').text = str(value)           
+                SubElement(elem, 'Value').text = str(value).decode('utf8')           
             body = tostring(root)
              
             url = self._url + config['rest'].format(self._domain, self._project, entity) + '/' + str(id)
@@ -570,27 +548,27 @@ class Client():
                 for i in xrange(0, len(folders)):  
                     folders[i]['name'] = names_new[i]                       
                 
+        if (res):
+            tests = {}
+            cnt = 0     
+            entity = 'test' if (entity == 'test-folder') else 'test-set'
+            fields = None if (entity == 'test-folder') else ['id', 'name']               
+            for rec in folders:                                           
+                query = '{parent-id[%d]}' % rec['id']
+                res, records = self.read(entity=entity, fields=fields, query=query) 
                 if (res):
-                    tests = {}
-                    cnt = 0     
-                    entity = 'test' if (entity == 'test-folder') else 'test-set'
-                    fields = None if (entity == 'test-folder') else ['id', 'name']               
-                    for rec in folders:                                           
-                        query = '{parent-id[%d]}' % rec['id']
-                        res, records = self.read(entity=entity, fields=fields, query=query) 
-                        if (res):
-                            tests[rec['name']] = records
-                            cnt += len(records)
+                    tests[rec['name']] = records
+                    cnt += len(records)
                 
-                self._mh.dmsg('htk_on_debug_info', self._mh._trn.msg('track_folder_read', cnt), self._mh.fromhere())            
-                ev = event.Event('track_after_read_folder')
-                self._mh.fire_event(ev)                 
+            self._mh.dmsg('htk_on_debug_info', self._mh._trn.msg('track_folder_read', cnt), self._mh.fromhere())            
+            ev = event.Event('track_after_read_folder')
+            self._mh.fire_event(ev)                 
                             
-                return (True, tests) 
+            return (True, tests) 
             
-            else:
-                self._mh.dmsg('htk_on_error', self._mh._trn.msg('track_missing_hier', folder['name']), self._mh.fromhere())                
-                return (False, None)
+        else:
+            self._mh.dmsg('htk_on_error', self._mh._trn.msg('track_missing_hier', folder['name']), self._mh.fromhere())                
+            return (False, None)
             
     def create_test_folder(self, path, name, entity='test-folder'):  
         """Method creates test folder on path

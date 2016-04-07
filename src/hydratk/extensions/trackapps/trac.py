@@ -67,7 +67,6 @@ class Client():
     _domain = None
     _project = None
     _cookie = None
-    _mapping = {}
     _return_fields = None
     _default_values = {}
     
@@ -82,8 +81,6 @@ class Client():
         self._client = RESTClient()  
 
         cfg = self._mh.cfg['Extensions']['TrackApps']['trac'] 
-        if (cfg.has_key('mapping') and cfg['mapping'] != None):
-            self._mapping = cfg['mapping'] 
         if (cfg.has_key('return_fields') and cfg['return_fields'] != None):
             self._return_fields = cfg['return_fields'].split(',') 
         if (cfg.has_key('default_values') and cfg['default_values'] != None):
@@ -131,13 +128,7 @@ class Client():
     def cookie(self):
         """ cookie property getter """
         
-        return self._cookie      
-    
-    @property
-    def mapping(self):
-        """ mapping property getter """
-        
-        return self._mapping   
+        return self._cookie        
     
     @property
     def return_fields(self):
@@ -152,7 +143,7 @@ class Client():
         return self._default_values       
     
     def connect(self, url=None, user=None, passw=None, project=None):
-        """Method connects to QC
+        """Method connects to Trac
         
         Args:    
            url (str): URL        
@@ -236,11 +227,7 @@ class Client():
         self._mh.dmsg('htk_on_debug_info', self._mh._trn.msg('track_reading', message), self._mh.fromhere()) 
         
         if (fields == None and self._return_fields != None):
-            fields = []
-            for key in self._return_fields:
-                if (key in self._mapping.values()):
-                    key = self._mapping.keys()[self._mapping.values().index(key)] 
-                fields.append(key)    
+            fields = self._return_fields
         
         ev = event.Event('track_before_read', id, fields, query)
         if (self._mh.fire_event(ev) > 0):
@@ -291,15 +278,13 @@ class Client():
                                   
                             for item in val.struct.member:
                                 key = str(item.name)                                                              
-                                value = getattr(item.value, rec_fields[key]) if (rec_fields.has_key(key)) else None                                
-                                if (key in self._mapping.values()):
-                                    key = self._mapping.keys()[self._mapping.values().index(key)]                                      
+                                value = getattr(item.value, rec_fields[key]) if (rec_fields.has_key(key)) else None                                                                  
                                 if (fields == None or key in fields):
                                     record[key] = value            
                                 
                     records.append(record)
                             
-                self._mh.dmsg('htk_on_debug_info', self._mh._trn.msg('track_qc_read', len(records)), self._mh.fromhere())            
+                self._mh.dmsg('htk_on_debug_info', self._mh._trn.msg('track_read', len(records)), self._mh.fromhere())            
                 ev = event.Event('track_after_read')
                 self._mh.fire_event(ev)   
                 result = True   
@@ -347,8 +332,6 @@ class Client():
             el_struct = SubElement(SubElement(el_params, 'param'), 'struct')
                         
             for key, value in params.items():
-                if (self._mapping.has_key(key)):
-                    key = self._mapping(key)
                 if (key == 'summary'):
                     SubElement(el_summary, rec_fields[key]).text = str(value)
                 elif (key == 'description'):
@@ -356,7 +339,7 @@ class Client():
                 elif (rec_fields.has_key(key) and rec_fields[key] != 'dateTime.iso8601'):
                     el_member = SubElement(el_struct, 'member')
                     SubElement(el_member, 'name').text = str(key)
-                    SubElement(SubElement(el_member, 'value'), rec_fields[key]).text = str(value)                    
+                    SubElement(SubElement(el_member, 'value'), rec_fields[key]).text = str(value).decode('utf8')                     
             body = tostring(root, xml_declaration=True)
              
             url = self._url + config['rpc'].format(self._project)
@@ -411,12 +394,10 @@ class Client():
             el_struct = SubElement(SubElement(el_params, 'param'), 'struct')
                         
             for key, value in params.items():
-                if (self._mapping.has_key(key)):
-                    key = self._mapping[key]
                 if (rec_fields.has_key(key) and rec_fields[key] != 'dateTime.iso8601'):
                     el_member = SubElement(el_struct, 'member')
                     SubElement(el_member, 'name').text = str(key)
-                    SubElement(SubElement(el_member, 'value'), rec_fields[key]).text = str(value)                    
+                    SubElement(SubElement(el_member, 'value'), rec_fields[key]).text = str(value).decode('utf8')                     
             body = tostring(root, xml_declaration=True)
              
             url = self._url + config['rpc'].format(self._project)
