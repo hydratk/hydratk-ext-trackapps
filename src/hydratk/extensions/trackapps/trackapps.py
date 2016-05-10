@@ -24,6 +24,14 @@ apps = {
 class Extension(extension.Extension):
     
     def _init_extension(self):
+        """Method initializes extension
+        
+        Args:
+        
+        Returns:
+           void
+            
+        """           
         
         self._ext_id   = 'trackapps'
         self._ext_name = 'TrackApps'
@@ -32,6 +40,16 @@ class Extension(extension.Extension):
         self._ext_year = '2016'  
         
     def _register_actions(self):
+        """Method registers command hooks
+        
+        Command track
+        
+        Args:
+        
+        Returns:
+           void
+            
+        """           
         
         self._mh.match_cli_command('track')
          
@@ -64,7 +82,7 @@ class Extension(extension.Extension):
         self._mh.match_long_option('steps', True)
     
     def init_client(self, app, *args, **kwargs):
-        '''Client factory method
+        """Client factory method
         
         Args:            
             app (str): application, qc|bugzilla|mantis|trac|jira|testlink
@@ -77,7 +95,7 @@ class Extension(extension.Extension):
         Raises:
             error: ValueError
                 
-        '''       
+        """       
 
         self._app = app.lower()        
         if (apps.has_key(self._app)):
@@ -93,9 +111,14 @@ class Extension(extension.Extension):
             return None  
         
     def handle_track(self):
-        '''Method handles command track
+        """Method handles command track
+           
+        Args:
+        
+        Returns:
+           void   
                 
-        '''             
+        """             
         
         self._mh.dmsg('htk_on_debug_info', self._mh._trn.msg('track_received_cmd', 'track'), self._mh.fromhere()) 
 
@@ -216,9 +239,14 @@ class Extension(extension.Extension):
                 self._client.disconnect()  
             
     def read(self):
-        '''Method handles read action
-                
-        '''            
+        """Method handles read action
+        
+        Args:
+        
+        Returns:
+           void
+            
+        """              
         
         id = CommandlineTool.get_input_option('--id')
         if (not id):
@@ -313,9 +341,14 @@ class Extension(extension.Extension):
             
        
     def create(self):
-        '''Method handles create action
-                
-        '''              
+        """Method create action
+        
+        Args:
+        
+        Returns:
+           void
+            
+        """               
         
         if (self._app in ['qc', 'testlink']):
             params = {}
@@ -468,9 +501,14 @@ class Extension(extension.Extension):
             print ('Create error')
     
     def update(self):
-        '''Method handles update action
-                
-        '''              
+        """Method handles update action
+        
+        Args:
+        
+        Returns:
+           void
+            
+        """                
         
         id = CommandlineTool.get_input_option('--id')
         if (not id):
@@ -523,9 +561,14 @@ class Extension(extension.Extension):
             print ('Update error')        
     
     def delete(self):
-        '''Method handles delete action
-                
-        '''              
+        """Method handles delete action
+        
+        Args:
+        
+        Returns:
+           void
+            
+        """               
         
         id = CommandlineTool.get_input_option('--id')
         if (not id):

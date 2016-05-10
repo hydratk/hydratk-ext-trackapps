@@ -74,6 +74,8 @@ class Client():
         """Class constructor
            
         Called when the object is initialized   
+        
+        Args:
                 
         """  
         

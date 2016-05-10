@@ -69,7 +69,9 @@ class Client():
     def __init__(self):
         """Class constructor
            
-        Called when the object is initialized   
+        Called when the object is initialized 
+        
+        Args:  
                 
         """  
         
