@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""This code is part of TrackApps Extension
+"""Client for Jira
 
 .. module:: trackapps.jira
    :platform: Unix
@@ -34,6 +34,8 @@ config = {
 }
 
 class Client():
+    """Class Client
+    """
     
     _mh = None
     _client = None
@@ -51,6 +53,7 @@ class Client():
         Called when the object is initialized   
         
         Args:
+           none
                 
         """  
         
@@ -186,7 +189,8 @@ class Client():
     def disconnect(self):
         """Method disconnects from Jira
         
-        Args:    
+        Args:  
+           none  
              
         Returns:
            bool: result

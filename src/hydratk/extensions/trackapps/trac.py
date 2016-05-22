@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""This code is part of TrackApps extension
+"""Client for Trac
 
 .. module:: trackapps.trac
    :platform: Unix
@@ -58,6 +58,8 @@ rec_fields = {
 }
 
 class Client():
+    """Class Client
+    """
     
     _mh = None
     _client = None
@@ -76,6 +78,7 @@ class Client():
         Called when the object is initialized   
         
         Args:
+           none
                 
         """  
         

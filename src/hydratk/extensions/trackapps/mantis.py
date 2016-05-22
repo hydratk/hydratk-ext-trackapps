@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""This code is part of TrackApps Extension
+"""Client for Mantis
 
 .. module:: trackapps.mantis
    :platform: Unix
@@ -71,6 +71,8 @@ rec_fields = {
 }
 
 class Client():
+    """Class Client
+    """
     
     _mh = None
     _client = None
@@ -88,6 +90,7 @@ class Client():
         Called when the object is initialized 
         
         Args: 
+           none
                 
         """  
         

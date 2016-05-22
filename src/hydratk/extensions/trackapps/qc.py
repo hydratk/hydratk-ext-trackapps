@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""This code is part of TrackApps extension
+"""Client for HP Quality Center
 
 .. module:: trackapps.qc
    :platform: Unix
@@ -41,6 +41,8 @@ config = {
 }
 
 class Client():
+    """Class Client
+    """
     
     _mh = None
     _client = None
@@ -58,7 +60,8 @@ class Client():
            
         Called when the object is initialized  
         
-        ARgs: 
+        Args:
+           none 
                 
         """  
         
@@ -209,7 +212,8 @@ class Client():
     def disconnect(self):
         """Method disconnects from QC
         
-        Args:    
+        Args:   
+           none 
              
         Returns:
            bool: result

@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
-'''This code is part of TrackApps extension
+"""Extension with interface to bugtracking and test management systems
 
 .. module:: trackapps.trackapps
    :platform: Unix
    :synopsis: Extension with interface to bugtracking and test management systems
 .. moduleauthor:: Petr Rašek <bowman@hydratk.org>
 
-'''
+"""
 
 from hydratk.core import extension
 from hydratk.lib.console.commandlinetool import CommandlineTool
@@ -22,11 +22,14 @@ apps = {
 }
 
 class Extension(extension.Extension):
+    """Class Extension
+    """
     
     def _init_extension(self):
         """Method initializes extension
         
         Args:
+           none
         
         Returns:
            void
@@ -45,6 +48,7 @@ class Extension(extension.Extension):
         Command track
         
         Args:
+           none
         
         Returns:
            void
@@ -114,6 +118,7 @@ class Extension(extension.Extension):
         """Method handles command track
            
         Args:
+           none
         
         Returns:
            void   
@@ -242,6 +247,7 @@ class Extension(extension.Extension):
         """Method handles read action
         
         Args:
+           none
         
         Returns:
            void
@@ -344,6 +350,7 @@ class Extension(extension.Extension):
         """Method create action
         
         Args:
+           none
         
         Returns:
            void
@@ -504,6 +511,7 @@ class Extension(extension.Extension):
         """Method handles update action
         
         Args:
+           none
         
         Returns:
            void
@@ -564,6 +572,7 @@ class Extension(extension.Extension):
         """Method handles delete action
         
         Args:
+           none
         
         Returns:
            void

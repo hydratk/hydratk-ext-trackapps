@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""This code is part of TrackApps extension
+"""Client for TestLink
 
 .. module:: trackapps.testlink
    :platform: Unix
@@ -55,6 +55,8 @@ entities = {
 }
 
 class Client():
+    """Class Client
+    """
     
     _mh = None
     _client = None
@@ -72,6 +74,7 @@ class Client():
         Called when the object is initialized 
         
         Args:  
+           none
                 
         """  
         
