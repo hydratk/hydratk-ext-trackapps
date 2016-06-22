@@ -2,7 +2,7 @@
 from setuptools import setup, find_packages
 
 
-with open("README.md", "r") as f:
+with open("README.rst", "r") as f:
     readme = f.readlines()
     
 classifiers = [
@@ -24,20 +24,27 @@ classifiers = [
     "Topic :: Utilities"
 ]
 
-packages=[
-          'hydratk.extensions.trackapps' 
-         ]
-         
+packages = [
+            'hydratk.extensions.trackapps' 
+           ]
+
 requires = [
-            'hydratk'
+            'hydratk',
+            'hydratk-lib-network'
            ]  
            
-data_files=[
-            ('/etc/hydratk/conf.d', ['etc/hydratk/conf.d/hydratk-ext-trackapps.conf']) 
-           ]                    
+data_files = [
+              ('/etc/hydratk/conf.d', ['etc/hydratk/conf.d/hydratk-ext-trackapps.conf']) 
+             ]  
+
+entry_points = {
+                'console_scripts': [
+                    'trackapps = hydratk.extensions.trackapps.bootstrapper:run_app'                               
+                ]
+               }                    
                 
 setup(name='hydratk-ext-trackapps',
-      version='0.1.0a',
+      version='0.1.0',
       description='Interface to bugtracking and test management applications',
       long_description=readme,
       author='Petr Rašek',
@@ -48,5 +55,6 @@ setup(name='hydratk-ext-trackapps',
       install_requires=requires,
       package_dir={'' : 'src'},
       classifiers=classifiers,
-      data_files=data_files 
+      data_files=data_files,
+      entry_points=entry_points 
      )

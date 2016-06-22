@@ -45,16 +45,30 @@ class Extension(extension.Extension):
     def _register_actions(self):
         """Method registers command hooks
         
-        Command track
-        
         Args:
            none
         
         Returns:
            void
             
-        """           
+        """       
         
+        if (self._mh.cli_cmdopt_profile == 'trackapps'):
+            self._register_standalone_actions()             
+        else:
+            self._register_htk_actions()                      
+        
+    def _register_htk_actions(self):
+        """Method registers command hooks
+        
+        Args:  
+           none        
+           
+        Returns:
+           void
+           
+        """    
+             
         self._mh.match_cli_command('track')
          
         hook = [
@@ -62,28 +76,84 @@ class Extension(extension.Extension):
                ]  
         self._mh.register_command_hook(hook)  
         
-        self._mh.match_long_option('app', True)
-        self._mh.match_long_option('action', True)  
-        self._mh.match_long_option('type', True)  
-        self._mh.match_long_option('input', True)   
-        self._mh.match_long_option('output', True)    
-        self._mh.match_long_option('url', True) 
-        self._mh.match_long_option('user', True) 
-        self._mh.match_long_option('passw', True)
-        self._mh.match_long_option('dev-key', True)
-        self._mh.match_long_option('domain', True)
-        self._mh.match_long_option('project', True)
-        self._mh.match_long_option('id', True)
-        self._mh.match_long_option('fields', True)
-        self._mh.match_long_option('query', True)
-        self._mh.match_long_option('order-by', True)
-        self._mh.match_long_option('limit', True)
-        self._mh.match_long_option('offset', True)
-        self._mh.match_long_option('page', True)
-        self._mh.match_long_option('per-page', True)
-        self._mh.match_long_option('params', True)
-        self._mh.match_long_option('path', True)
-        self._mh.match_long_option('steps', True)
+        self._mh.match_long_option('tr-app', True, 'tr-app')
+        self._mh.match_long_option('tr-action', True, 'tr-action')  
+        self._mh.match_long_option('tr-type', True, 'tr-type')  
+        self._mh.match_long_option('tr-input', True, 'tr-input')   
+        self._mh.match_long_option('tr-output', True, 'tr-output')    
+        self._mh.match_long_option('tr-url', True, 'tr-url') 
+        self._mh.match_long_option('tr-user', True, 'tr-user') 
+        self._mh.match_long_option('tr-passw', True, 'tr-passw')
+        self._mh.match_long_option('tr-dev-key', True, 'tr-dev-key')
+        self._mh.match_long_option('tr-domain', True, 'tr-domain')
+        self._mh.match_long_option('tr-project', True, 'tr-project')
+        self._mh.match_long_option('tr-id', True, 'tr-id')
+        self._mh.match_long_option('tr-fields', True, 'tr-fields')
+        self._mh.match_long_option('tr-query', True, 'tr-query')
+        self._mh.match_long_option('tr-order-by', True, 'tr-order-by')
+        self._mh.match_long_option('tr-limit', True, 'tr-limit')
+        self._mh.match_long_option('tr-offset', True, 'tr-offset')
+        self._mh.match_long_option('tr-page', True, 'tr-page')
+        self._mh.match_long_option('tr-per-page', True, 'tr-per-page')
+        self._mh.match_long_option('tr-params', True, 'tr-params')
+        self._mh.match_long_option('tr-path', True, 'tr-path')
+        self._mh.match_long_option('tr-steps', True, 'tr-steps')  
+        
+    def _register_standalone_actions(self):
+        """Method registers command hooks for standalone mode
+        
+        Args:  
+           none        
+           
+        Returns:
+           void
+           
+        """ 
+        
+        option_profile = 'trackapps'
+        help_title = '{h}' + self._ext_name + ' v' + self._ext_version + '{e}'
+        cp_string = '{u}' + "(c) "+ self._ext_year +" "+ self._ext_author  + '{e}'
+        self._mh.set_cli_appl_title(help_title, cp_string)  
+        
+        self._mh.match_cli_command('run', option_profile)
+         
+        hook = [
+                {'command' : 'run', 'callback' : self.handle_track}
+               ]  
+        self._mh.register_command_hook(hook)
+        
+        self._mh.match_cli_command('help', option_profile)   
+        
+        self._mh.match_long_option('app', True, 'tr-app', False, option_profile)
+        self._mh.match_long_option('action', True, 'tr-action', False, option_profile)  
+        self._mh.match_long_option('type', True, 'tr-type', False, option_profile)  
+        self._mh.match_long_option('input', True, 'tr-input', False, option_profile)   
+        self._mh.match_long_option('output', True, 'tr-output', False, option_profile)    
+        self._mh.match_long_option('url', True, 'tr-url', False, option_profile) 
+        self._mh.match_long_option('user', True, 'tr-user', False, option_profile) 
+        self._mh.match_long_option('passw', True, 'tr-passw', False, option_profile)
+        self._mh.match_long_option('dev-key', True, 'tr-dev-key', False, option_profile)
+        self._mh.match_long_option('domain', True, 'tr-domain', False, option_profile)
+        self._mh.match_long_option('project', True, 'tr-project', False, option_profile)
+        self._mh.match_long_option('id', True, 'tr-id', False, option_profile)
+        self._mh.match_long_option('fields', True, 'tr-fields', False, option_profile)
+        self._mh.match_long_option('query', True, 'tr-query', False, option_profile)
+        self._mh.match_long_option('order-by', True, 'tr-order-by', False, option_profile)
+        self._mh.match_long_option('limit', True, 'tr-limit', False, option_profile)
+        self._mh.match_long_option('offset', True, 'tr-offset', False, option_profile)
+        self._mh.match_long_option('page', True, 'tr-page', False, option_profile)
+        self._mh.match_long_option('per-page', True, 'tr-per-page', False, option_profile)
+        self._mh.match_long_option('params', True, 'tr-params', False, option_profile)
+        self._mh.match_long_option('path', True, 'tr-path', False, option_profile)
+        self._mh.match_long_option('steps', True, 'tr-steps', False, option_profile)                   
+        
+        self._mh.match_cli_option(('c','config'), True, None, False, option_profile)
+        self._mh.match_cli_option(('d','debug'), True, None, False, option_profile)   
+        self._mh.match_cli_option(('e','debug-channel'), True, None, False, option_profile)
+        self._mh.match_cli_option(('l','language'), True, None, False, option_profile)
+        self._mh.match_cli_option(('m','run-mode'), True, None, False, option_profile)
+        self._mh.match_cli_option(('f','force'), False, None, False, option_profile)
+        self._mh.match_cli_option(('i','interactive'), False, None, False, option_profile)                       
     
     def init_client(self, app, *args, **kwargs):
         """Client factory method
@@ -127,8 +197,8 @@ class Extension(extension.Extension):
         
         self._mh.dmsg('htk_on_debug_info', self._mh._trn.msg('track_received_cmd', 'track'), self._mh.fromhere()) 
 
-        app = CommandlineTool.get_input_option('--app')
-        action = CommandlineTool.get_input_option('--action')
+        app = CommandlineTool.get_input_option('tr-app')
+        action = CommandlineTool.get_input_option('tr-action')
         
         if (not app):
             print ('Missing option app')            
@@ -145,7 +215,7 @@ class Extension(extension.Extension):
             self._client = self.init_client(app)  
             self._cfg = self._mh.cfg['Extensions']['TrackApps'][self._app] 
             
-            url = CommandlineTool.get_input_option('--url')                                   
+            url = CommandlineTool.get_input_option('tr-url')                                   
             if (not url):
                 if (self._cfg.has_key('url') and self._cfg['url'] != None):
                     url = self._cfg['url']
@@ -153,7 +223,7 @@ class Extension(extension.Extension):
                     print ('Enter url') 
                     url = raw_input(':')
             
-            user = CommandlineTool.get_input_option('--user')      
+            user = CommandlineTool.get_input_option('tr-user')      
             if (not user and self._app != 'testlink'):
                 if (self._cfg.has_key('user') and self._cfg['user'] != None):
                     user = self._cfg['user']
@@ -161,7 +231,7 @@ class Extension(extension.Extension):
                     print ('Enter username') 
                     user = raw_input(':') 
               
-            passw = CommandlineTool.get_input_option('--passw')         
+            passw = CommandlineTool.get_input_option('tr-passw')         
             if (not passw and self._app != 'testlink'):
                 if (self._cfg.has_key('passw') and self._cfg['passw'] != None):
                     passw = self._cfg['passw']
@@ -169,15 +239,7 @@ class Extension(extension.Extension):
                     print ('Enter password') 
                     passw = raw_input(':')      
                     
-            passw = CommandlineTool.get_input_option('--passw')         
-            if (not passw and self._app != 'testlink'):
-                if (self._cfg.has_key('passw') and self._cfg['passw'] != None):
-                    passw = self._cfg['passw']
-                else:
-                    print ('Enter password') 
-                    passw = raw_input(':')  
-                    
-            dev_key = CommandlineTool.get_input_option('--dev-key')         
+            dev_key = CommandlineTool.get_input_option('tr-dev-key')         
             if (not dev_key and self._app == 'testlink'):
                 if (self._cfg.has_key('dev_key') and self._cfg['dev_key'] != None):
                     dev_key = self._cfg['dev_key']
@@ -185,7 +247,7 @@ class Extension(extension.Extension):
                     print ('Enter dev_key') 
                     dev_key = raw_input(':')                                         
                     
-            domain = CommandlineTool.get_input_option('--domain')         
+            domain = CommandlineTool.get_input_option('tr-domain')         
             if (not domain and self._app == 'qc'):
                 if (self._cfg.has_key('domain') and self._cfg['domain'] != None):
                     domain = self._cfg['domain']
@@ -193,7 +255,7 @@ class Extension(extension.Extension):
                     print ('Enter domain') 
                     domain = raw_input(':')   
                     
-            project = CommandlineTool.get_input_option('--project')         
+            project = CommandlineTool.get_input_option('tr-project')         
             if (not project and self._app in ['qc', 'mantis', 'trac', 'jira', 'testlink']):
                 if (self._cfg.has_key('project') and self._cfg['project'] != None):
                     project = self._cfg['project']
@@ -201,7 +263,7 @@ class Extension(extension.Extension):
                     print ('Enter project') 
                     project = raw_input(':') 
                     
-            self._entity = CommandlineTool.get_input_option('--type')
+            self._entity = CommandlineTool.get_input_option('tr-type')
             if (not self._entity):
                 self._entity = 'defect'
             if (self._app == 'qc' and self._entity not in ['defect', 'test-folder', 'test', 'test-set-folder', 'test-set', 'test-instance']):
@@ -254,19 +316,19 @@ class Extension(extension.Extension):
             
         """              
         
-        id = CommandlineTool.get_input_option('--id')
+        id = CommandlineTool.get_input_option('tr-id')
         if (not id):
             id = None
             
-        fields = CommandlineTool.get_input_option('--fields')
+        fields = CommandlineTool.get_input_option('tr-fields')
         if (not fields):
             fields = None
         
-        query = CommandlineTool.get_input_option('--query')
+        query = CommandlineTool.get_input_option('tr-query')
         if (not query):
             query = None
                   
-        order_by_in = CommandlineTool.get_input_option('--order-by')
+        order_by_in = CommandlineTool.get_input_option('tr-order-by')
         if (order_by_in != False):           
             order_by = {}  
             order_by_in = order_by_in.split(',')
@@ -277,25 +339,25 @@ class Extension(extension.Extension):
         else:
             order_by = None                     
         
-        limit = CommandlineTool.get_input_option('--limit')
+        limit = CommandlineTool.get_input_option('tr-limit')
         if (not limit):
             limit = None
         
-        offset = CommandlineTool.get_input_option('--offset')
+        offset = CommandlineTool.get_input_option('tr-offset')
         if (not offset):
             offset = None   
             
-        page = CommandlineTool.get_input_option('--page')
+        page = CommandlineTool.get_input_option('tr-page')
         if (not page):
             page = -1  
             
-        per_page = CommandlineTool.get_input_option('--per-page')
+        per_page = CommandlineTool.get_input_option('tr-per-page')
         if (not per_page):
             per_page = -1                                                
         
         if (self._app == 'qc'):
             if (self._entity in ['test-folder', 'test-set-folder']):
-                path = CommandlineTool.get_input_option('--path')
+                path = CommandlineTool.get_input_option('tr-path')
                 if (not path):
                     print ('Enter path') 
                     path = raw_input(':')
@@ -310,7 +372,7 @@ class Extension(extension.Extension):
                 
         elif (self._app == 'testlink'):
             if (self._entity == 'test-suite'):
-                path = CommandlineTool.get_input_option('--path')
+                path = CommandlineTool.get_input_option('tr-path')
                 if (not path):
                     print ('Enter path') 
                     path = raw_input(':')
@@ -336,7 +398,7 @@ class Extension(extension.Extension):
             res, records = self._client.read(id, fields, query, limit, offset)        
             
         if (res):
-            output = CommandlineTool.get_input_option('--output')
+            output = CommandlineTool.get_input_option('tr-output')
             if (not output):
                 print records
             else:
@@ -364,7 +426,7 @@ class Extension(extension.Extension):
         else:
             params = self._client.default_values
                   
-        params_in = CommandlineTool.get_input_option('--params')
+        params_in = CommandlineTool.get_input_option('tr-params')
         if (params_in != False):           
             params_in = params_in.split(',')
             for param in params_in:
@@ -372,7 +434,7 @@ class Extension(extension.Extension):
                 key = rec[0]
                 params[key] = rec[1]
                 
-        input = CommandlineTool.get_input_option('--input')
+        input = CommandlineTool.get_input_option('tr-input')
         if (input != False and path.exists(input)):      
             with open(input, 'r') as f:                                         
                 params['description'] = f.read()        
@@ -430,7 +492,7 @@ class Extension(extension.Extension):
                                 
                         params[field] = values[idx]
                         
-        steps_in = CommandlineTool.get_input_option('--steps') 
+        steps_in = CommandlineTool.get_input_option('tr-steps') 
         steps = [] 
         if (steps_in != False):           
             steps_in = steps_in.split('|')
@@ -446,7 +508,7 @@ class Extension(extension.Extension):
             if (self._entity in ('defect', 'test-instance')):           
                 id = self._client.create(self._entity, params)
             else:
-                path = CommandlineTool.get_input_option('--path')
+                path = CommandlineTool.get_input_option('--tr-path')
                 if (not path):
                     print ('Enter path') 
                     path = raw_input(':')
@@ -460,7 +522,7 @@ class Extension(extension.Extension):
                     
         elif (self._app == 'testlink'):
             if (self._entity == 'test-suite'):
-                path = CommandlineTool.get_input_option('--path')
+                path = CommandlineTool.get_input_option('tr-path')
                 if (not path):
                     print ('Enter path') 
                     path = raw_input(':')                                
@@ -492,7 +554,7 @@ class Extension(extension.Extension):
                 id = self._client.create_build(plan, name, notes)
                 
             elif (self._entity == 'test'):
-                path = CommandlineTool.get_input_option('--path')
+                path = CommandlineTool.get_input_option('tr-path')
                 if (not path):
                     print ('Enter path') 
                     path = raw_input(':')
@@ -518,12 +580,12 @@ class Extension(extension.Extension):
             
         """                
         
-        id = CommandlineTool.get_input_option('--id')
+        id = CommandlineTool.get_input_option('tr-id')
         if (not id):
             print ('Enter id') 
             id = raw_input(':')        
         
-        params_in = CommandlineTool.get_input_option('--params')
+        params_in = CommandlineTool.get_input_option('tr-params')
         if (not params_in):
             params = {}
         else:            
@@ -533,7 +595,7 @@ class Extension(extension.Extension):
                 rec = param.split(':')
                 params[rec[0]] = rec[1]
                 
-        input = CommandlineTool.get_input_option('--input')
+        input = CommandlineTool.get_input_option('tr-input')
         if (input != False and path.exists(input)):      
             with open(input, 'r') as f:                                         
                 params['description'] = f.read()                   
@@ -579,7 +641,7 @@ class Extension(extension.Extension):
             
         """               
         
-        id = CommandlineTool.get_input_option('--id')
+        id = CommandlineTool.get_input_option('tr-id')
         if (not id):
             print ('Enter id') 
             id = raw_input(':')         
