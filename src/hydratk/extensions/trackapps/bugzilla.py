@@ -60,15 +60,15 @@ class Client():
         self._client = RESTClient()
          
         cfg = self._mh.cfg['Extensions']['TrackApps']['bugzilla'] 
-        if (cfg.has_key('return_fields') and cfg['return_fields'] != None):
+        if ('return_fields' in cfg and cfg['return_fields'] != None):
             self._return_fields = cfg['return_fields'].split(',') 
-        if (cfg.has_key('default_values') and cfg['default_values'] != None):
+        if ('default_values' in cfg and cfg['default_values'] != None):
             self._default_values = cfg['default_values'] 
-        if (cfg.has_key('url') and cfg['url'] != None):
+        if ('url' in cfg and cfg['url'] != None):
             self._url = cfg['url']    
-        if (cfg.has_key('user') and cfg['user'] != None):
+        if ('user' in cfg and cfg['user'] != None):
             self._user = cfg['user']   
-        if (cfg.has_key('passw') and cfg['passw'] != None):
+        if ('passw' in cfg and cfg['passw'] != None):
             self._passw = cfg['passw']                           
     
     @property
@@ -168,7 +168,7 @@ class Client():
             else:
                 self._mh.dmsg('htk_on_error', self._mh._trn.msg('track_missing_token'), self._mh.fromhere())
         else:
-            print body
+            print(body)
             self._mh.dmsg('htk_on_error', self._mh._trn.msg('track_error', res, body), self._mh.fromhere())    
             
         return result  
@@ -290,7 +290,7 @@ class Client():
         
         if (self._default_values != {}):
             for key, value in self._default_values.items():
-                if (not params.has_key(key)):
+                if (key not in params):
                     params[key] = value         
         
         ev = event.Event('track_before_create', params)

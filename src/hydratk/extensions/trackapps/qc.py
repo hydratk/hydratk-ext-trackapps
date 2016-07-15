@@ -69,22 +69,22 @@ class Client():
         self._client = RESTClient()   
         
         cfg = self._mh.cfg['Extensions']['TrackApps']['qc'] 
-        if (cfg.has_key('return_fields') and cfg['return_fields'] != None):
+        if ('return_fields' in cfg and cfg['return_fields'] != None):
             self._return_fields = cfg['return_fields']
             for key, value in cfg['return_fields'].items():
                 if (value != None):
                     self._return_fields[key] = value.split(',')
-        if (cfg.has_key('default_values') and cfg['default_values'] != None):
+        if ('default_values' in cfg and cfg['default_values'] != None):
             self._default_values = cfg['default_values']  
-        if (cfg.has_key('url') and cfg['url'] != None):
+        if ('url' in cfg and cfg['url'] != None):
             self._url = cfg['url']    
-        if (cfg.has_key('user') and cfg['user'] != None):
+        if ('user' in cfg and cfg['user'] != None):
             self._user = cfg['user']   
-        if (cfg.has_key('passw') and cfg['passw'] != None):
+        if ('passw' in cfg and cfg['passw'] != None):
             self._passw = cfg['passw']  
-        if (cfg.has_key('domain') and cfg['domain'] != None):
+        if ('domain' in cfg and cfg['domain'] != None):
             self._domain = cfg['domain']
-        if (cfg.has_key('project') and cfg['project'] != None):
+        if ('project' in cfg and cfg['project'] != None):
             self._project = cfg['project']                                     
         
     @property
@@ -265,7 +265,7 @@ class Client():
                    entity, id, fields, query, order_by, limit, offset)
         self._mh.dmsg('htk_on_debug_info', self._mh._trn.msg('track_reading', message), self._mh.fromhere()) 
         
-        if (fields == None and self._return_fields.has_key(entity) and self._return_fields[entity] != None):
+        if (fields == None and entity in self._return_fields and self._return_fields[entity] != None):
             fields = self._return_fields[entity]
         
         ev = event.Event('track_before_read', entity, id, fields, query, order_by, limit, offset)
@@ -354,9 +354,9 @@ class Client():
         
         self._mh.dmsg('htk_on_debug_info', self._mh._trn.msg('track_creating', entity, params), self._mh.fromhere())
         
-        if (self._default_values.has_key(entity) and self._default_values[entity] != None):
+        if (entity in self._default_values and self._default_values[entity] != None):
             for key, value in self._default_values[entity].items():
-                if (not params.has_key(key)):
+                if (key not in params):
                     params[key] = value 
         
         ev = event.Event('track_before_create', entity, params)

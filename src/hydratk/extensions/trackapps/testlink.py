@@ -82,15 +82,15 @@ class Client():
         self._client = RESTClient()   
         
         cfg = self._mh.cfg['Extensions']['TrackApps']['testlink']  
-        if (cfg.has_key('return_fields') and cfg['return_fields'] != None):
+        if ('return_fields' in cfg and cfg['return_fields'] != None):
             self._return_fields = cfg['return_fields'].split(',')
-        if (cfg.has_key('default_values') and cfg['default_values'] != None):
+        if ('default_values' in cfg and cfg['default_values'] != None):
             self._default_values = cfg['default_values']  
-        if (cfg.has_key('url') and cfg['url'] != None):
+        if ('url' in cfg and cfg['url'] != None):
             self._url = cfg['url']    
-        if (cfg.has_key('dev_key') and cfg['dev_key'] != None):
+        if ('dev_key' in cfg and cfg['dev_key'] != None):
             self._dev_key = cfg['dev_key']   
-        if (cfg.has_key('project') and cfg['project'] != None):
+        if ('project' in cfg and cfg['project'] != None):
             self._project = cfg['project']
             
     @property
@@ -329,7 +329,7 @@ class Client():
         
         if (self._default_values != None):
             for key, value in self._default_values.items():
-                if (not params.has_key(key)):
+                if (key not in params):
                     params[key] = value 
 
         ev = event.Event('track_before_create', method, params)
@@ -481,7 +481,7 @@ class Client():
                 parent = str(record['parent_id'])
                 parent_orig = parent                 
                     
-                while (parent != None and not suites.has_key(parent)):
+                while (parent != None and parent not in suites):
                     method = 'tl.getTestSuiteByID'
                     params = {'testsuiteid': parent}
                     res, records = self.read(method, params)     
@@ -498,7 +498,7 @@ class Client():
                             suites[key]['path'] = True
                         
                 suite_name = suites[parent_orig]['name']
-                if (not tests.has_key(suite_name)):
+                if (suite_name not in tests):
                     tests[suite_name] = []   
                 
                 record_new = {}
@@ -808,7 +808,7 @@ class Client():
         root = Element('params') 
         el_struct = SubElement(SubElement(SubElement(root, 'param'), 'value'), 'struct') 
         
-        if (not params.has_key('devKey')):
+        if ('devKey' not in params):
             params['devKey'] = self._dev_key 
         
         for key, value in params.items():
@@ -820,7 +820,7 @@ class Client():
                 el_steps = SubElement(SubElement(SubElement(el_param, 'value'), 'array'), 'data')
                 for i in xrange(0, len(value)):
                     el_step = SubElement(SubElement(el_steps, 'value'), 'struct')
-                    if (not value[i].has_key('step_number')):
+                    if ('step_number' not in value[i]):
                         value[i]['step_number'] = i+1
                     for name, val in value[i].items():
                         el_member = SubElement(el_step, 'member')

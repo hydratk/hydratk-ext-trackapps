@@ -98,17 +98,17 @@ class Client():
         self._client = SOAPClient()  
 
         cfg = self._mh.cfg['Extensions']['TrackApps']['mantis'] 
-        if (cfg.has_key('return_fields') and cfg['return_fields'] != None):
+        if ('return_fields' in cfg and cfg['return_fields'] != None):
             self._return_fields = cfg['return_fields'].split(',') 
-        if (cfg.has_key('default_values') and cfg['default_values'] != None):
+        if ('default_values' in cfg and cfg['default_values'] != None):
             self._default_values = cfg['default_values']  
-        if (cfg.has_key('url') and cfg['url'] != None):
+        if ('url' in cfg and cfg['url'] != None):
             self._url = cfg['url']    
-        if (cfg.has_key('user') and cfg['user'] != None):
+        if ('user' in cfg and cfg['user'] != None):
             self._user = cfg['user']   
-        if (cfg.has_key('passw') and cfg['passw'] != None):
+        if ('passw' in cfg and cfg['passw'] != None):
             self._passw = cfg['passw']  
-        if (cfg.has_key('project') and cfg['project'] != None):
+        if ('project' in cfg and cfg['project'] != None):
             self._project = cfg['project']              
     
     @property
@@ -312,7 +312,7 @@ class Client():
         
         if (self._default_values != {}):
             for key, value in self._default_values.items():
-                if (not params.has_key(key)):
+                if (key not in params):
                     params[key] = value         
         
         ev = event.Event('track_before_create', params)
@@ -511,7 +511,7 @@ class Client():
         
         root = Element('issue')  
 
-        if (not params.has_key('project')):
+        if ('project' not in params):
             elem = SubElement(root, 'project')
             SubElement(elem, 'id').text = str(self._project_id)
             SubElement(elem, 'name').text = self._project          
@@ -523,50 +523,50 @@ class Client():
                 SubElement(root, key).text = str(value)
             elif (type == 'object_ref'):
                 elem = SubElement(root, key)
-                SubElement(elem, 'id').text = str(value['id']) if (value.has_key('id')) else None
-                SubElement(elem, 'name').text = value['name'].decode('utf8')  if (value.has_key('name')) else None
+                SubElement(elem, 'id').text = str(value['id']) if ('id' in value) else None
+                SubElement(elem, 'name').text = value['name'].decode('utf8')  if ('name' in value) else None
             elif (type == 'object_ref_array'):
                 elem = SubElement(root, key)
                 for item in value:
                     el_item = Element('item')
-                    SubElement(elem, 'id').text = item['id'] if (item.has_key('id')) else None
-                    SubElement(elem, 'name').text = item['name'].decode('utf8')  if (item.has_key('name')) else None
+                    SubElement(elem, 'id').text = item['id'] if ('id' in item) else None
+                    SubElement(elem, 'name').text = item['name'].decode('utf8')  if ('name' in item) else None
                     elem.append(item)
             elif (type == 'account_data'):
                 elem = SubElement(root, key)
-                SubElement(elem, 'id').text = str(value['id']) if (value.has_key('id')) else None
-                SubElement(elem, 'name').text = value['name'].decode('utf8')  if (value.has_key('name')) else None
-                SubElement(elem, 'real_name').text = value['real_name'].decode('utf8')  if (value.has_key('real_name')) else None
-                SubElement(elem, 'email').text = value['email'].decode('utf8')  if (value.has_key('email')) else None                
+                SubElement(elem, 'id').text = str(value['id']) if ('id' in value) else None
+                SubElement(elem, 'name').text = value['name'].decode('utf8')  if ('name' in value) else None
+                SubElement(elem, 'real_name').text = value['real_name'].decode('utf8')  if ('real_name' in value) else None
+                SubElement(elem, 'email').text = value['email'].decode('utf8')  if ('email' in value) else None                
             elif (type == 'account_data_array'):
                 elem = SubElement(root, key)
                 for item in value:
                     el_item = Element('item')
-                    SubElement(elem, 'id').text = str(item['id']) if (item.has_key('id')) else None
-                    SubElement(elem, 'name').text = item['name'].decode('utf8')  if (item.has_key('name')) else None
-                    SubElement(elem, 'real_name').text = item['real_name'].decode('utf8')  if (item.has_key('real_name')) else None
-                    SubElement(elem, 'email').text = item['email'].decode('utf8')  if (item.has_key('email')) else None                    
+                    SubElement(elem, 'id').text = str(item['id']) if ('id' in item) else None
+                    SubElement(elem, 'name').text = item['name'].decode('utf8')  if ('name' in item) else None
+                    SubElement(elem, 'real_name').text = item['real_name'].decode('utf8')  if ('real_name' in item) else None
+                    SubElement(elem, 'email').text = item['email'].decode('utf8')  if ('email' in item) else None                    
                     elem.append(item)           
             elif (type == 'attachment_data_array'):
                 elem = SubElement(root, key)
                 for item in value:
                     el_item = Element('item')
-                    SubElement(elem, 'id').text = str(item['id']) if (item.has_key('id')) else None
-                    SubElement(elem, 'filename').text = item['filename'].decode('utf8')  if (item.has_key('filename')) else None
-                    SubElement(elem, 'size').text = item['size'] if (item.has_key('size')) else None
-                    SubElement(elem, 'download_url').text = item['download_url'] if (item.has_key('download_url')) else None   
-                    SubElement(elem, 'user_id').text = item['user_id'] if (item.has_key('user_id')) else None                   
+                    SubElement(elem, 'id').text = str(item['id']) if ('id' in item) else None
+                    SubElement(elem, 'filename').text = item['filename'].decode('utf8')  if ('filename' in item) else None
+                    SubElement(elem, 'size').text = item['size'] if ('size' in item) else None
+                    SubElement(elem, 'download_url').text = item['download_url'] if ('download_url' in item) else None   
+                    SubElement(elem, 'user_id').text = item['user_id'] if ('user_id' in item) else None                   
                     elem.append(item)                 
             elif (type == 'relationship_data_array'):
                 elem = SubElement(root, key)
                 for item in value:
                     el_item = Element('item')
-                    SubElement(elem, 'id').text = str(item['id']) if (item.has_key('id')) else None
-                    if (item.has_key('type')):
+                    SubElement(elem, 'id').text = str(item['id']) if ('id' in item) else None
+                    if ('type' in item):
                         el_type = SubElement(el_item)
-                        SubElement(el_type, 'id').text = str(item['type']['id']) if (item['type'].has_key('id')) else None
-                        SubElement(el_type, 'name').text = item['type']['name'].decode('utf8')  if (item['type'].has_key('name')) else None                        
-                    SubElement(elem, 'target_id').text = item['target_id'] if (item.has_key('target_id')) else None                 
+                        SubElement(el_type, 'id').text = str(item['type']['id']) if ('id' in item['type']) else None
+                        SubElement(el_type, 'name').text = item['type']['name'].decode('utf8')  if ('name' in item['type']) else None                        
+                    SubElement(elem, 'target_id').text = item['target_id'] if ('target_id' in item) else None                 
                     elem.append(item)  
                     
         return root                           

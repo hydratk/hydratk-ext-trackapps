@@ -61,17 +61,17 @@ class Client():
         self._client = RESTClient() 
 
         cfg = self._mh.cfg['Extensions']['TrackApps']['jira'] 
-        if (cfg.has_key('return_fields') and cfg['return_fields'] != None):
+        if ('return_fields' in cfg and cfg['return_fields'] != None):
             self._return_fields = cfg['return_fields'].split(',') 
-        if (cfg.has_key('default_values') and cfg['default_values'] != None):
+        if ('default_values' in cfg and cfg['default_values'] != None):
             self._default_values = cfg['default_values']  
-        if (cfg.has_key('url') and cfg['url'] != None):
+        if ('url' in cfg and cfg['url'] != None):
             self._url = cfg['url']    
-        if (cfg.has_key('user') and cfg['user'] != None):
+        if ('user' in cfg and cfg['user'] != None):
             self._user = cfg['user']   
-        if (cfg.has_key('passw') and cfg['passw'] != None):
+        if ('passw' in cfg and cfg['passw'] != None):
             self._passw = cfg['passw']  
-        if (cfg.has_key('project') and cfg['project'] != None):
+        if ('project' in cfg and cfg['project'] != None):
             self._project = cfg['project']                    
     
     @property
@@ -311,7 +311,7 @@ class Client():
         
         if (self._default_values != {}):
             for key, value in self._default_values.items():
-                if (not params.has_key(key)):
+                if (key not in params):
                     params[key] = value         
         
         ev = event.Event('track_before_create', params)
@@ -323,9 +323,9 @@ class Client():
             root = {'fields': {}}
             for key, value in params.items():          
                 root['fields'][key] = value   
-            if (not root['fields'].has_key('project')):
+            if ('project' not in root['fields']):
                 root['fields']['project'] = {'key': self._project}
-            if (not root['fields'].has_key('issuetype')):
+            if ('issuetype' not in root['fields']):
                 root['fields']['issuetype'] = {'name': 'Bug'}                  
             body = write(root)
              

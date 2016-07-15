@@ -86,17 +86,17 @@ class Client():
         self._client = RESTClient()  
 
         cfg = self._mh.cfg['Extensions']['TrackApps']['trac'] 
-        if (cfg.has_key('return_fields') and cfg['return_fields'] != None):
+        if ('return_fields' in cfg and cfg['return_fields'] != None):
             self._return_fields = cfg['return_fields'].split(',') 
-        if (cfg.has_key('default_values') and cfg['default_values'] != None):
+        if ('default_values' in cfg and cfg['default_values'] != None):
             self._default_values = cfg['default_values']  
-        if (cfg.has_key('url') and cfg['url'] != None):
+        if ('url' in cfg and cfg['url'] != None):
             self._url = cfg['url']    
-        if (cfg.has_key('user') and cfg['user'] != None):
+        if ('user' in cfg and cfg['user'] != None):
             self._user = cfg['user']   
-        if (cfg.has_key('passw') and cfg['passw'] != None):
+        if ('passw' in cfg and cfg['passw'] != None):
             self._passw = cfg['passw']  
-        if (cfg.has_key('project') and cfg['project'] != None):
+        if ('project' in cfg and cfg['project'] != None):
             self._project = cfg['project']              
         
     @property
@@ -283,7 +283,7 @@ class Client():
                                   
                             for item in val.struct.member:
                                 key = str(item.name)                                                              
-                                value = getattr(item.value, rec_fields[key]) if (rec_fields.has_key(key)) else None                                                                  
+                                value = getattr(item.value, rec_fields[key]) if (key in rec_fields) else None                                                                  
                                 if (fields == None or key in fields):
                                     record[key] = value            
                                 
@@ -320,7 +320,7 @@ class Client():
         
         if (self._default_values != {}):
             for key, value in self._default_values.items():
-                if (not params.has_key(key)):
+                if (key not in params):
                     params[key] = value         
         
         ev = event.Event('track_before_create', params)
@@ -341,7 +341,7 @@ class Client():
                     SubElement(el_summary, rec_fields[key]).text = str(value)
                 elif (key == 'description'):
                     SubElement(el_description, rec_fields[key]).text = str(value)
-                elif (rec_fields.has_key(key) and rec_fields[key] != 'dateTime.iso8601'):
+                elif (key in rec_fields and rec_fields[key] != 'dateTime.iso8601'):
                     el_member = SubElement(el_struct, 'member')
                     SubElement(el_member, 'name').text = str(key)
                     SubElement(SubElement(el_member, 'value'), rec_fields[key]).text = str(value).decode('utf8')                     
@@ -399,7 +399,7 @@ class Client():
             el_struct = SubElement(SubElement(el_params, 'param'), 'struct')
                         
             for key, value in params.items():
-                if (rec_fields.has_key(key) and rec_fields[key] != 'dateTime.iso8601'):
+                if (key in rec_fields and rec_fields[key] != 'dateTime.iso8601'):
                     el_member = SubElement(el_struct, 'member')
                     SubElement(el_member, 'name').text = str(key)
                     SubElement(SubElement(el_member, 'value'), rec_fields[key]).text = str(value).decode('utf8')                     
