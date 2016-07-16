@@ -25,7 +25,7 @@ track_after_update
 from hydratk.core.masterhead import MasterHead
 from hydratk.core import event
 from hydratk.lib.network.rest.client import RESTClient
-from jsonlib2 import write
+from simplejson import dumps
 
 config = {
   'login'  : '/rest.cgi/login',
@@ -303,7 +303,7 @@ class Client():
             for key, value in params.items():          
                 root[key] = value         
             root['token'] = self._token 
-            body = write(root)
+            body = dumps(root)
              
             url = self._url + config['rest']                    
             res, body = self._client.send_request(url, method='POST', headers={'Accept': 'application/json'},
@@ -349,7 +349,7 @@ class Client():
             for key, value in params.items():          
                 root[key] = value         
             root['token'] = self._token  
-            body = write(root)
+            body = dumps(root)
              
             url = self._url + config['rest'] + '/' + str(id)               
             res, body = self._client.send_request(url, method='PUT', headers={'Accept': 'application/json'}, 

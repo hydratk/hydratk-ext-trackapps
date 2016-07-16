@@ -25,7 +25,7 @@ track_after_update
 from hydratk.core.masterhead import MasterHead
 from hydratk.core import event
 from hydratk.lib.network.rest.client import RESTClient
-from jsonlib2 import write
+from simplejson import dumps
 
 config = {
   'session' : '/rest/auth/1/session',
@@ -166,7 +166,7 @@ class Client():
             self._project = project
             
             url = self._url + config['session']
-            body = write({'username': self._user, 'password': self._passw})
+            body = dumps({'username': self._user, 'password': self._passw})
             res, body = self._client.send_request(url, method='POST', headers={'Accept': 'application/json'}, 
                                                   body=body, content_type='json')
         
@@ -263,7 +263,7 @@ class Client():
                 body['maxResults'] = limit
             if (offset != None):
                 body['startAt'] = offset
-            body = write(body)
+            body = dumps(body)
             
             url = self._url + config['search']
             headers = {'Cookie': self._cookie, 'Accept': 'application/json'}
@@ -327,7 +327,7 @@ class Client():
                 root['fields']['project'] = {'key': self._project}
             if ('issuetype' not in root['fields']):
                 root['fields']['issuetype'] = {'name': 'Bug'}                  
-            body = write(root)
+            body = dumps(root)
              
             url = self._url + config['issue']
             headers = {'Cookie': self._cookie, 'Accept': 'application/json'}
@@ -374,7 +374,7 @@ class Client():
             root = {'fields': {}}
             for key, value in params.items():          
                 root['fields'][key] = value                  
-            body = write(root)
+            body = dumps(root)
              
             url = self._url + config['issue'] + '/{0}-{1}'.format(self._project, id)
             headers = {'Cookie': self._cookie, 'Accept': 'application/json'}
