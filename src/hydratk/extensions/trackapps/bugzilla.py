@@ -45,6 +45,7 @@ class Client():
     _token = None
     _return_fields = None
     _default_values = {}
+    _is_connected = None
     
     def __init__(self):
         """Class constructor
@@ -113,6 +114,12 @@ class Client():
         
         return self._default_values      
     
+    @property
+    def is_connected(self):
+        """ is_conncted property getter """
+        
+        return self._is_connected       
+    
     def connect(self, url=None, user=None, passw=None):
         """Method connects to Bugzilla
         
@@ -157,18 +164,17 @@ class Client():
                                                   params=params, content_type='json')
         
         result = False
-        if (res == 200): 
-              
+        if (res == 200):               
             self._token = body['token']
             if (self._token != None):
                 self._mh.dmsg('htk_on_debug_info', self._mh._trn.msg('track_connected'), self._mh.fromhere())            
                 ev = event.Event('track_after_connect')
-                self._mh.fire_event(ev)   
+                self._mh.fire_event(ev)
+                self._is_connected = True   
                 result = True
             else:
                 self._mh.dmsg('htk_on_error', self._mh._trn.msg('track_missing_token'), self._mh.fromhere())
         else:
-            print(body)
             self._mh.dmsg('htk_on_error', self._mh._trn.msg('track_error', res, body), self._mh.fromhere())    
             
         return result  
@@ -186,6 +192,10 @@ class Client():
         
         self._mh.dmsg('htk_on_debug_info', self._mh._trn.msg('track_disconnecting'), self._mh.fromhere()) 
         
+        if (not self._is_connected):
+            self._mh.dmsg('htk_on_warning', self._mh._trn.msg('track_not_connected'), self._mh.fromhere()) 
+            return False
+        
         url = self._url + config['logout']
         res, body = self._client.send_request(url, method='GET', params={'token': self._token})
         
@@ -193,6 +203,7 @@ class Client():
         if (res == 200):
             self._mh.dmsg('htk_on_debug_info', self._mh._trn.msg('track_disconnected'), self._mh.fromhere())
             self._token = None
+            self._is_connected = False
             result = True
         else:
             self._mh.dmsg('htk_on_error', self._mh._trn.msg('track_error', res, body), self._mh.fromhere())
@@ -205,7 +216,7 @@ class Client():
         Args: 
            id (int): record id         
            fields (list): fields to be returned, default all
-           query (str): record query
+           query (dict): record query, see Bugzilla doc
            limit (int): record count    
            offset (int): record offset
              
@@ -222,6 +233,10 @@ class Client():
                    id, fields, query, limit, offset)
         self._mh.dmsg('htk_on_debug_info', self._mh._trn.msg('track_reading', message), self._mh.fromhere()) 
         
+        if (not self._is_connected):
+            self._mh.dmsg('htk_on_warning', self._mh._trn.msg('track_not_connected'), self._mh.fromhere()) 
+            return False, None        
+        
         if (fields == None and self._return_fields != None):
             fields = self._return_fields
         
@@ -237,7 +252,8 @@ class Client():
             
             params = {}
             if (query != None):
-                params['query'] = query
+                for key, val in query.items():
+                    params[key] = val
             if (id != None):
                 params['id'] = id
             if (limit != None):
@@ -255,12 +271,13 @@ class Client():
                 
                 cnt = len(body['bugs'])
                 records = []
-                for i in xrange(0, cnt):
+                for i in range(0, cnt):
                     record = {}
                     for key, value in body['bugs'][i].items():                   
                         if (fields == None or key in fields):
-                            record[key] = value                     
-                    records.append(record)       
+                            record[key] = value  
+                    if (record != {}):                   
+                        records.append(record)       
                             
                 self._mh.dmsg('htk_on_debug_info', self._mh._trn.msg('track_read', cnt), self._mh.fromhere())            
                 ev = event.Event('track_after_read')
@@ -287,6 +304,10 @@ class Client():
         """       
         
         self._mh.dmsg('htk_on_debug_info', self._mh._trn.msg('track_creating', 'bug', params), self._mh.fromhere())
+        
+        if (not self._is_connected):
+            self._mh.dmsg('htk_on_warning', self._mh._trn.msg('track_not_connected'), self._mh.fromhere()) 
+            return None        
         
         if (self._default_values != {}):
             for key, value in self._default_values.items():
@@ -337,6 +358,10 @@ class Client():
         """          
       
         self._mh.dmsg('htk_on_debug_info', self._mh._trn.msg('track_updating', 'bug', id, params), self._mh.fromhere())
+        
+        if (not self._is_connected):
+            self._mh.dmsg('htk_on_warning', self._mh._trn.msg('track_not_connected'), self._mh.fromhere()) 
+            return False        
         
         ev = event.Event('track_before_update', id, params)
         if (self._mh.fire_event(ev) > 0):

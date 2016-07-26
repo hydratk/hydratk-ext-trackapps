@@ -1,0 +1,144 @@
+Test-Scenario-1:
+  Id: ts_01
+  Path: hydratk/extensions/trackapps/trackapps/01_methods_ut.jedi
+  Name: ts_init_extension
+  Desc: Test _init_extension method
+  Author: Petr Rasek <bowman@hydratk.org>
+  Version: 0.1
+  
+  Pre-Req: |
+    from hydratk.core.masterhead import MasterHead
+  
+  Test-Case-1:
+    Id: tc_01
+    Name: tc_init
+    Desc: Initialize extension
+    
+    Test-Condition-1: 
+      Id: tco_01
+      Name: tco_init
+      Desc: Initialize extension
+      
+      Test: |
+        mh = MasterHead.get_head()
+        ext = mh._ext['TrackApps']
+        ext._ext_id = ext._ext_name = None
+        ext._init_extension()
+        res = [ext._ext_id, ext._ext_name]
+      
+      Validate: |
+        this.test_result = str(res)
+        exp = ['trackapps', 'TrackApps']
+        assert (res == exp), '_ext_id, _ext_name = {0}'.format(exp)
+        
+Test-Scenario-2:
+  Id: ts_02
+  Path: hydratk/extensions/trackapps/trackapps/01_methods_ut.jedi
+  Name: ts_init_client
+  Desc: Test init_client method
+  Author: Petr Rasek <bowman@hydratk.org>
+  Version: 0.1
+  
+  Pre-Req: |
+    from hydratk.core.masterhead import MasterHead
+  
+  Test-Case-1:
+    Id: tc_01
+    Name: tc_init_client
+    Desc: Initialize client
+    
+    Test-Condition-1: 
+      Id: tco_01
+      Name: tco_qc
+      Desc: Quality Center  
+      
+      Test: |
+        mh = MasterHead.get_head()
+        ext = mh._ext['TrackApps']
+        c = ext.init_client('qc')
+        res = c.__class__.__name__            
+        
+      Validate: |
+        this.test_result = res
+        assert (res == 'Client'), 'init_client = Client'
+        
+    Test-Condition-2: 
+      Id: tco_02
+      Name: tco_bugzilla
+      Desc: Bugzilla  
+      
+      Test: |
+        c = ext.init_client('bugzilla')
+        res = c.__class__.__name__            
+        
+      Validate: |
+        this.test_result = res
+        assert (res == 'Client'), 'init_client = Client'   
+        
+    Test-Condition-3: 
+      Id: tco_03
+      Name: tco_mantis
+      Desc: Mantis
+      
+      Test: |
+        c = ext.init_client('mantis')
+        res = c.__class__.__name__            
+        
+      Validate: |
+        this.test_result = res
+        assert (res == 'Client'), 'init_client = Client'     
+        
+    Test-Condition-4: 
+      Id: tco_04
+      Name: tco_trac
+      Desc: Trac  
+      
+      Test: |
+        c = ext.init_client('trac')
+        res = c.__class__.__name__            
+        
+      Validate: |
+        this.test_result = res
+        assert (res == 'Client'), 'init_client = Client'    
+        
+    Test-Condition-5: 
+      Id: tco_05
+      Name: tco_jira
+      Desc: Jira  
+      
+      Test: |
+        c = ext.init_client('jira')
+        res = c.__class__.__name__            
+        
+      Validate: |
+        this.test_result = res
+        assert (res == 'Client'), 'init_client = Client'  
+        
+    Test-Condition-6: 
+      Id: tco_06
+      Name: tco_testlink
+      Desc: TestLink
+      
+      Test: |
+        c = ext.init_client('testlink')
+        res = c.__class__.__name__            
+        
+      Validate: |
+        this.test_result = res
+        assert (res == 'Client'), 'init_client = Client'   
+        
+    Test-Condition-7: 
+      Id: tco_07
+      Name: tco_invalid
+      Desc: Invalid application
+      
+      Test: |
+        try:
+            ext.init_client('xx')
+            ex = False
+        except NotImplementedError:
+            ex = True
+      
+      Validate: |    
+        this.test_result = ex
+        assert (ex), 'init_client raises NotImplementedError'                                        

@@ -83,6 +83,7 @@ class Client():
     _project_id = None
     _return_fields = None
     _default_values = {}
+    _is_connected = None
     
     def __init__(self):
         """Class constructor
@@ -157,7 +158,13 @@ class Client():
     def default_values(self):
         """ default_values property getter """
         
-        return self._default_values       
+        return self._default_values     
+    
+    @property
+    def is_connected(self):
+        """ is_connected property getter """
+        
+        return self._is_connected        
     
     def connect(self, url=None, user=None, passw=None, project=None):
         """Method connects to Mantis
@@ -213,13 +220,14 @@ class Client():
             SubElement(root, 'project_name').text = self._project
             
             res = self._client.send_request('mc_project_get_id_from_name', body=tostring(root))
-            if (res != None):
-                self._project_id = res            
+            if (res != None and res != 0):
+                self._project_id = res  
+                self._is_connected = True          
                 self._mh.dmsg('htk_on_debug_info', self._mh._trn.msg('track_connected'), self._mh.fromhere())            
                 ev = event.Event('track_after_connect')
                 self._mh.fire_event(ev)
             else:
-                self._mh.dmsg('htk_on_error', self._mh._trn.msg('track_missing_project'), self._mh.fromhere()) 
+                self._mh.dmsg('htk_on_error', self._mh._trn.msg('track_missing_project', project), self._mh.fromhere()) 
                 res = False       
         
         return res                 
@@ -244,6 +252,10 @@ class Client():
         
         message = 'id:{0}, fields:{1}, page:{2}, per_page:{3}'.format(id, fields, page, per_page)
         self._mh.dmsg('htk_on_debug_info', self._mh._trn.msg('track_reading', message), self._mh.fromhere()) 
+        
+        if (not self._is_connected):
+            self._mh.dmsg('htk_on_warning', self._mh._trn.msg('track_not_connected'), self._mh.fromhere()) 
+            return False, None         
         
         if (fields == None and self._return_fields != None):
             fields = self._return_fields
@@ -278,12 +290,16 @@ class Client():
             records = None
             if (res != None):
                 if (id != None):
-                    records = self._parse_record(res, fields)
+                    parsed = self._parse_record(res, fields)
+                    if (parsed != {}):
+                        records = parsed
                     cnt = 1
                 else:
                     records = []
                     for item in res:
-                        records.append(self._parse_record(item, fields))
+                        parsed = self._parse_record(item, fields)
+                        if (parsed != {}):
+                            records.append(parsed)
                     cnt = len(records)
                 result = True
                 
@@ -309,6 +325,10 @@ class Client():
         """   
         
         self._mh.dmsg('htk_on_debug_info', self._mh._trn.msg('track_creating', 'issue', params), self._mh.fromhere())
+        
+        if (not self._is_connected):
+            self._mh.dmsg('htk_on_warning', self._mh._trn.msg('track_not_connected'), self._mh.fromhere()) 
+            return None         
         
         if (self._default_values != {}):
             for key, value in self._default_values.items():
@@ -354,6 +374,10 @@ class Client():
         """          
       
         self._mh.dmsg('htk_on_debug_info', self._mh._trn.msg('track_updating', 'issue', id, params), self._mh.fromhere())
+        
+        if (not self._is_connected):
+            self._mh.dmsg('htk_on_warning', self._mh._trn.msg('track_not_connected'), self._mh.fromhere()) 
+            return False         
         
         ev = event.Event('track_before_update', id, params)
         if (self._mh.fire_event(ev) > 0):
@@ -403,6 +427,10 @@ class Client():
         """          
       
         self._mh.dmsg('htk_on_debug_info', self._mh._trn.msg('track_deleting', 'issue', id), self._mh.fromhere())
+        
+        if (not self._is_connected):
+            self._mh.dmsg('htk_on_warning', self._mh._trn.msg('track_not_connected'), self._mh.fromhere()) 
+            return False        
         
         ev = event.Event('track_before_delete', id)
         if (self._mh.fire_event(ev) > 0):
@@ -517,42 +545,42 @@ class Client():
             SubElement(elem, 'name').text = self._project          
            
         for key, value in params.items():
-            type = rec_fields[key]   
+            type = rec_fields[key] if (key in rec_fields) else 'standard'   
 
             if (type in ('standard', 'date')):
                 SubElement(root, key).text = str(value)
             elif (type == 'object_ref'):
                 elem = SubElement(root, key)
                 SubElement(elem, 'id').text = str(value['id']) if ('id' in value) else None
-                SubElement(elem, 'name').text = value['name'].decode('utf8')  if ('name' in value) else None
+                SubElement(elem, 'name').text = value['name'].decode('utf8')  if ('name' in value and value['name'] != None) else None
             elif (type == 'object_ref_array'):
                 elem = SubElement(root, key)
                 for item in value:
                     el_item = Element('item')
                     SubElement(elem, 'id').text = item['id'] if ('id' in item) else None
-                    SubElement(elem, 'name').text = item['name'].decode('utf8')  if ('name' in item) else None
+                    SubElement(elem, 'name').text = item['name'].decode('utf8')  if ('name' in item and item['name'] != None) else None
                     elem.append(item)
             elif (type == 'account_data'):
                 elem = SubElement(root, key)
                 SubElement(elem, 'id').text = str(value['id']) if ('id' in value) else None
-                SubElement(elem, 'name').text = value['name'].decode('utf8')  if ('name' in value) else None
-                SubElement(elem, 'real_name').text = value['real_name'].decode('utf8')  if ('real_name' in value) else None
-                SubElement(elem, 'email').text = value['email'].decode('utf8')  if ('email' in value) else None                
+                SubElement(elem, 'name').text = value['name'].decode('utf8')  if ('name' in value and value['name'] != None) else None
+                SubElement(elem, 'real_name').text = value['real_name'].decode('utf8')  if ('real_name' in value and value['real_name'] != None) else None
+                SubElement(elem, 'email').text = value['email'].decode('utf8')  if ('email' in value and value['email'] != None) else None                
             elif (type == 'account_data_array'):
                 elem = SubElement(root, key)
                 for item in value:
                     el_item = Element('item')
                     SubElement(elem, 'id').text = str(item['id']) if ('id' in item) else None
-                    SubElement(elem, 'name').text = item['name'].decode('utf8')  if ('name' in item) else None
-                    SubElement(elem, 'real_name').text = item['real_name'].decode('utf8')  if ('real_name' in item) else None
-                    SubElement(elem, 'email').text = item['email'].decode('utf8')  if ('email' in item) else None                    
+                    SubElement(elem, 'name').text = item['name'].decode('utf8')  if ('name' in item and item['name'] != None) else None
+                    SubElement(elem, 'real_name').text = item['real_name'].decode('utf8')  if ('real_name' in item and item['real_name'] != None) else None
+                    SubElement(elem, 'email').text = item['email'].decode('utf8')  if ('email' in item and item['email'] != None) else None                    
                     elem.append(item)           
             elif (type == 'attachment_data_array'):
                 elem = SubElement(root, key)
                 for item in value:
                     el_item = Element('item')
                     SubElement(elem, 'id').text = str(item['id']) if ('id' in item) else None
-                    SubElement(elem, 'filename').text = item['filename'].decode('utf8')  if ('filename' in item) else None
+                    SubElement(elem, 'filename').text = item['filename'].decode('utf8')  if ('filename' in item and item['filename'] != None) else None
                     SubElement(elem, 'size').text = item['size'] if ('size' in item) else None
                     SubElement(elem, 'download_url').text = item['download_url'] if ('download_url' in item) else None   
                     SubElement(elem, 'user_id').text = item['user_id'] if ('user_id' in item) else None                   
@@ -565,7 +593,7 @@ class Client():
                     if ('type' in item):
                         el_type = SubElement(el_item)
                         SubElement(el_type, 'id').text = str(item['type']['id']) if ('id' in item['type']) else None
-                        SubElement(el_type, 'name').text = item['type']['name'].decode('utf8')  if ('name' in item['type']) else None                        
+                        SubElement(el_type, 'name').text = item['type']['name'].decode('utf8')  if ('name' in item['type'] and item['type']['name'] != None) else None                        
                     SubElement(elem, 'target_id').text = item['target_id'] if ('target_id' in item) else None                 
                     elem.append(item)  
                     

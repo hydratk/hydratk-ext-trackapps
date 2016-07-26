@@ -27,8 +27,9 @@ track_after_delete
 from hydratk.core.masterhead import MasterHead
 from hydratk.core import event
 from hydratk.lib.network.rest.client import RESTClient
-from lxml.etree import Element, SubElement, tostring
+from lxml.etree import Element, SubElement, tostring, XMLSyntaxError
 from lxml import objectify
+from sys import version_info
 
 config = {
   'login'  : '/{0}/login',
@@ -71,6 +72,7 @@ class Client():
     _cookie = None
     _return_fields = None
     _default_values = {}
+    _is_connected = None
     
     def __init__(self):
         """Class constructor
@@ -145,7 +147,13 @@ class Client():
     def default_values(self):
         """ default_values property getter """
         
-        return self._default_values       
+        return self._default_values     
+    
+    @property
+    def is_connected(self):
+        """ is_connected property getter """
+        
+        return self._is_connected       
     
     def connect(self, url=None, user=None, passw=None, project=None):
         """Method connects to Trac
@@ -198,6 +206,7 @@ class Client():
               
             self._cookie = self._client.get_header('set-cookie')
             if (self._cookie != None):
+                self._is_connected = True
                 self._mh.dmsg('htk_on_debug_info', self._mh._trn.msg('track_connected'), self._mh.fromhere())            
                 ev = event.Event('track_after_connect')
                 self._mh.fire_event(ev)   
@@ -206,7 +215,10 @@ class Client():
                 self._mh.dmsg('htk_on_error', self._mh._trn.msg('track_missing_cookie'), self._mh.fromhere())
                 
         else:
-            error = objectify.fromstring(body).head.title
+            try:
+                error = objectify.fromstring(body).head.title if (body != None) else None
+            except XMLSyntaxError as ex:
+                error = body
             self._mh.dmsg('htk_on_error', self._mh._trn.msg('track_error', res, error), self._mh.fromhere())    
         
         return result  
@@ -217,7 +229,7 @@ class Client():
         Args: 
            id (int): record id         
            fields (list): fields to be returned, default all
-           query (str): query
+           query (str): query, see Trac doc
              
         Returns:
            tuple: result (bool), records (list of dictionary)
@@ -231,6 +243,10 @@ class Client():
         message = 'id:{0}, fields:{1}, query:{2}'.format(id, fields, query)
         self._mh.dmsg('htk_on_debug_info', self._mh._trn.msg('track_reading', message), self._mh.fromhere()) 
         
+        if (not self._is_connected):
+            self._mh.dmsg('htk_on_warning', self._mh._trn.msg('track_not_connected'), self._mh.fromhere()) 
+            return False, None          
+        
         if (fields == None and self._return_fields != None):
             fields = self._return_fields
         
@@ -238,7 +254,7 @@ class Client():
         if (self._mh.fire_event(ev) > 0):
             id = ev.argv(0)
             fields = ev.argv(1)
-            query = ev.arg(2)
+            query = ev.argv(2)
             
         if (ev.will_run_default()):                                      
             
@@ -286,8 +302,9 @@ class Client():
                                 value = getattr(item.value, rec_fields[key]) if (key in rec_fields) else None                                                                  
                                 if (fields == None or key in fields):
                                     record[key] = value            
-                                
-                    records.append(record)
+                    
+                    if (record != {}):            
+                        records.append(record)
                             
                 self._mh.dmsg('htk_on_debug_info', self._mh._trn.msg('track_read', len(records)), self._mh.fromhere())            
                 ev = event.Event('track_after_read')
@@ -318,6 +335,10 @@ class Client():
         
         self._mh.dmsg('htk_on_debug_info', self._mh._trn.msg('track_creating', 'issue', params), self._mh.fromhere())
         
+        if (not self._is_connected):
+            self._mh.dmsg('htk_on_warning', self._mh._trn.msg('track_not_connected'), self._mh.fromhere()) 
+            return None          
+        
         if (self._default_values != {}):
             for key, value in self._default_values.items():
                 if (key not in params):
@@ -344,7 +365,7 @@ class Client():
                 elif (key in rec_fields and rec_fields[key] != 'dateTime.iso8601'):
                     el_member = SubElement(el_struct, 'member')
                     SubElement(el_member, 'name').text = str(key)
-                    SubElement(SubElement(el_member, 'value'), rec_fields[key]).text = str(value).decode('utf8')                     
+                    SubElement(SubElement(el_member, 'value'), rec_fields[key]).text = str(value).decode('utf8') if (version_info[0] == 2) else str(value)                   
             body = tostring(root, xml_declaration=True)
              
             url = self._url + config['rpc'].format(self._project)
@@ -384,7 +405,11 @@ class Client():
         
         self._mh.dmsg('htk_on_debug_info', self._mh._trn.msg('track_updating', 'issue', id, params), self._mh.fromhere())
         
-        ev = event.Event('track_before_create', id, params)
+        if (not self._is_connected):
+            self._mh.dmsg('htk_on_warning', self._mh._trn.msg('track_not_connected'), self._mh.fromhere()) 
+            return False          
+        
+        ev = event.Event('track_before_update', id, params)
         if (self._mh.fire_event(ev) > 0):
             id = ev.argv(0)
             params = ev.argv(1)  
@@ -402,7 +427,7 @@ class Client():
                 if (key in rec_fields and rec_fields[key] != 'dateTime.iso8601'):
                     el_member = SubElement(el_struct, 'member')
                     SubElement(el_member, 'name').text = str(key)
-                    SubElement(SubElement(el_member, 'value'), rec_fields[key]).text = str(value).decode('utf8')                     
+                    SubElement(SubElement(el_member, 'value'), rec_fields[key]).text = str(value).decode('utf8') if (version_info[0] == 2) else str(value)                       
             body = tostring(root, xml_declaration=True)
              
             url = self._url + config['rpc'].format(self._project)
@@ -440,6 +465,10 @@ class Client():
         """       
         
         self._mh.dmsg('htk_on_debug_info', self._mh._trn.msg('track_deleting', 'issue', id), self._mh.fromhere())
+        
+        if (not self._is_connected):
+            self._mh.dmsg('htk_on_warning', self._mh._trn.msg('track_not_connected'), self._mh.fromhere()) 
+            return False          
         
         ev = event.Event('track_before_delete', id)
         if (self._mh.fire_event(ev) > 0):

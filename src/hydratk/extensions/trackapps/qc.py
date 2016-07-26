@@ -54,6 +54,7 @@ class Client():
     _cookie = None
     _return_fields = {}
     _default_values = {}
+    _is_connected = None
     
     def __init__(self):
         """Class constructor
@@ -139,7 +140,13 @@ class Client():
     def default_values(self):
         """ default_values property getter """
         
-        return self._default_values                                  
+        return self._default_values        
+    
+    @property
+    def is_connected(self):
+        """ is_connected property getter """
+        
+        return self._is_connected                                
      
     def connect(self, url=None, user=None, passw=None, domain=None, project=None):
         """Method connects to QC
@@ -197,6 +204,7 @@ class Client():
               
             self._cookie = self._client.get_header('set-cookie')
             if (self._cookie != None):
+                self._is_connected = True
                 self._mh.dmsg('htk_on_debug_info', self._mh._trn.msg('track_connected'), self._mh.fromhere())            
                 ev = event.Event('track_after_connect')
                 self._mh.fire_event(ev)   
@@ -222,6 +230,10 @@ class Client():
         
         self._mh.dmsg('htk_on_debug_info', self._mh._trn.msg('track_disconnecting'), self._mh.fromhere()) 
         
+        if (not self._is_connected):
+            self._mh.dmsg('htk_on_warning', self._mh._trn.msg('track_not_connected'), self._mh.fromhere()) 
+            return False           
+        
         url = self._url + config['sign_out']
         res, body = self._client.send_request(url, method='POST', headers={'Cookie': self._cookie})
         
@@ -229,6 +241,7 @@ class Client():
         if (res == 200):
             self._mh.dmsg('htk_on_debug_info', self._mh._trn.msg('track_disconnected'), self._mh.fromhere())
             self._cookie = None
+            self._is_connected = False
             result = True
         else:
             error = body.Title if (hasattr(body, 'Title')) else body
@@ -264,6 +277,10 @@ class Client():
         message = 'entity:{0}, id:{1}, fields:{2}, query:{3}, order_by:{4}, limit:{5}, offset:{6}'.format(
                    entity, id, fields, query, order_by, limit, offset)
         self._mh.dmsg('htk_on_debug_info', self._mh._trn.msg('track_reading', message), self._mh.fromhere()) 
+        
+        if (not self._is_connected):
+            self._mh.dmsg('htk_on_warning', self._mh._trn.msg('track_not_connected'), self._mh.fromhere()) 
+            return False, None           
         
         if (fields == None and entity in self._return_fields and self._return_fields[entity] != None):
             fields = self._return_fields[entity]
@@ -350,9 +367,13 @@ class Client():
         
         if (entity not in config['entities']):
             self._mh.dmsg('htk_on_error', self._mh._trn.msg('track_unknown_entity', entity), self._mh.fromhere())
-            return (False, None)        
+            return None        
         
         self._mh.dmsg('htk_on_debug_info', self._mh._trn.msg('track_creating', entity, params), self._mh.fromhere())
+        
+        if (not self._is_connected):
+            self._mh.dmsg('htk_on_warning', self._mh._trn.msg('track_not_connected'), self._mh.fromhere()) 
+            return None           
         
         if (entity in self._default_values and self._default_values[entity] != None):
             for key, value in self._default_values[entity].items():
@@ -410,9 +431,13 @@ class Client():
       
         if (entity not in config['entities']):
             self._mh.dmsg('htk_on_error', self._mh._trn.msg('track_unknown_entity', entity), self._mh.fromhere())
-            return (False, None)      
+            return False     
       
         self._mh.dmsg('htk_on_debug_info', self._mh._trn.msg('track_updating', entity, id, params), self._mh.fromhere())
+        
+        if (not self._is_connected):
+            self._mh.dmsg('htk_on_warning', self._mh._trn.msg('track_not_connected'), self._mh.fromhere()) 
+            return False        
         
         ev = event.Event('track_before_update', entity, id, params)
         if (self._mh.fire_event(ev) > 0):
@@ -465,9 +490,13 @@ class Client():
         
         if (entity not in config['entities']):
             self._mh.dmsg('htk_on_error', self._mh._trn.msg('track_unknown_entity', entity), self._mh.fromhere())
-            return (False, None)        
+            return False       
         
         self._mh.dmsg('htk_on_debug_info', self._mh._trn.msg('track_deleting', entity, id), self._mh.fromhere())
+        
+        if (not self._is_connected):
+            self._mh.dmsg('htk_on_warning', self._mh._trn.msg('track_not_connected'), self._mh.fromhere()) 
+            return False        
         
         ev = event.Event('track_before_delete', entity, id)
         if (self._mh.fire_event(ev) > 0):
@@ -514,6 +543,10 @@ class Client():
      
         self._mh.dmsg('htk_on_debug_info', self._mh._trn.msg('track_reading_folder', path, entity), 
                       self._mh.fromhere())        
+        
+        if (not self._is_connected):
+            self._mh.dmsg('htk_on_warning', self._mh._trn.msg('track_not_connected'), self._mh.fromhere()) 
+            return False, None           
         
         ev = event.Event('track_before_read_folder', path, entity)
         if (self._mh.fire_event(ev) > 0):
@@ -593,6 +626,10 @@ class Client():
             self._mh.dmsg('htk_on_error', self._mh._trn.msg('track_unknown_entity', entity), self._mh.fromhere())
             return None         
         
+        if (not self._is_connected):
+            self._mh.dmsg('htk_on_warning', self._mh._trn.msg('track_not_connected'), self._mh.fromhere()) 
+            return None           
+        
         folder = self._get_folder(path, entity)
         if (folder == None):
             return None
@@ -617,6 +654,10 @@ class Client():
         
         self._mh.dmsg('htk_on_debug_info', self._mh._trn.msg('track_reading_set', id), 
                       self._mh.fromhere())        
+        
+        if (not self._is_connected):
+            self._mh.dmsg('htk_on_warning', self._mh._trn.msg('track_not_connected'), self._mh.fromhere()) 
+            return False, None           
         
         ev = event.Event('track_before_read_set', id)
         if (self._mh.fire_event(ev) > 0):
@@ -648,6 +689,10 @@ class Client():
                 
         """       
         
+        if (not self._is_connected):
+            self._mh.dmsg('htk_on_warning', self._mh._trn.msg('track_not_connected'), self._mh.fromhere()) 
+            return None        
+        
         folder = self._get_folder(path, 'test-set-folder')
         if (folder == None):
             return None
@@ -666,6 +711,10 @@ class Client():
            int: test id
                 
         """       
+        
+        if (not self._is_connected):
+            self._mh.dmsg('htk_on_warning', self._mh._trn.msg('track_not_connected'), self._mh.fromhere()) 
+            return None        
         
         folder = self._get_folder(path)
         if (folder == None):

@@ -26,6 +26,8 @@ from hydratk.core.masterhead import MasterHead
 from hydratk.core import event
 from hydratk.lib.network.rest.client import RESTClient
 from simplejson import dumps
+from base64 import encodestring
+from sys import version_info
 
 config = {
   'session' : '/rest/auth/1/session',
@@ -43,9 +45,9 @@ class Client():
     _user = None
     _passw = None
     _project = None
-    _cookie = None
     _return_fields = None
     _default_values = {}
+    _is_connected = None
     
     def __init__(self):
         """Class constructor
@@ -105,12 +107,6 @@ class Client():
         return self._project      
     
     @property
-    def cookie(self):
-        """ cookie property getter """
-        
-        return self._cookie  
-    
-    @property
     def return_fields(self):
         """ return_fields property getter """
         
@@ -120,7 +116,13 @@ class Client():
     def default_values(self):
         """ default_values property getter """
         
-        return self._default_values         
+        return self._default_values      
+    
+    @property
+    def is_connected(self):
+        """ is_connected property getter """
+        
+        return self._is_connected         
     
     def connect(self, url=None, user=None, passw=None, project=None):
         """Method connects to Jira
@@ -164,53 +166,23 @@ class Client():
             self._user = user
             self._passw = passw
             self._project = project
-            
+
             url = self._url + config['session']
-            body = dumps({'username': self._user, 'password': self._passw})
+            body = {'username': self._user, 'password': self._passw}
             res, body = self._client.send_request(url, method='POST', headers={'Accept': 'application/json'}, 
-                                                  body=body, content_type='json')
+                                                  body=dumps(body), content_type='json')
         
         result = False
         if (res == 200): 
-
-            self._cookie = self._client.get_header('set-cookie')
-            if (self._cookie != None):
-                self._mh.dmsg('htk_on_debug_info', self._mh._trn.msg('track_connected'), self._mh.fromhere())            
-                ev = event.Event('track_after_connect')
-                self._mh.fire_event(ev)   
-                result = True
-            else:
-                self._mh.dmsg('htk_on_error', self._mh._trn.msg('track_missing_cookie'), self._mh.fromhere())
+            self._is_connected = True
+            self._mh.dmsg('htk_on_debug_info', self._mh._trn.msg('track_connected'), self._mh.fromhere())            
+            ev = event.Event('track_after_connect')
+            self._mh.fire_event(ev)   
+            result = True
         else:
             self._mh.dmsg('htk_on_error', self._mh._trn.msg('track_error', res, body), self._mh.fromhere())    
             
-        return result  
-    
-    def disconnect(self):
-        """Method disconnects from Jira
-        
-        Args:  
-           none  
-             
-        Returns:
-           bool: result
-                
-        """   
-        
-        self._mh.dmsg('htk_on_debug_info', self._mh._trn.msg('track_disconnecting'), self._mh.fromhere()) 
-        
-        url = self._url + config['session']
-        res, body = self._client.send_request(url, method='DELETE', headers={'Cookie': self._cookie})
-        
-        result = False
-        if (res == 200):
-            self._mh.dmsg('htk_on_debug_info', self._mh._trn.msg('track_disconnected'), self._mh.fromhere())
-            self._cookie = None
-            result = True
-        else:
-            self._mh.dmsg('htk_on_error', self._mh._trn.msg('track_error', res, body), self._mh.fromhere())
-            
-        return result       
+        return result         
     
     def read(self, id=None, fields=None, query=None, limit=None, offset=None): 
         """Method reads records
@@ -218,7 +190,7 @@ class Client():
         Args: 
            id (int): record id         
            fields (list): fields to be returned, default all
-           query (str): record query
+           query (str): record query, see Jira doc
            limit (int): record count    
            offset (int): record offset
              
@@ -234,6 +206,10 @@ class Client():
         message = 'id:{0}, fields:{1}, query:{2}, limit:{3}, offset:{4}'.format(
                    id, fields, query, limit, offset)
         self._mh.dmsg('htk_on_debug_info', self._mh._trn.msg('track_reading', message), self._mh.fromhere()) 
+        
+        if (not self._is_connected):
+            self._mh.dmsg('htk_on_warning', self._mh._trn.msg('track_not_connected'), self._mh.fromhere()) 
+            return False, None          
         
         if (fields == None and self._return_fields != None):
             fields = self._return_fields
@@ -258,7 +234,7 @@ class Client():
                     fields_new.append(field)                 
                 body['fields'] = fields_new           
             if (query != None):
-                body['jql'] += 'and ' + query
+                body['jql'] += ' and ' + query
             if (limit != None):
                 body['maxResults'] = limit
             if (offset != None):
@@ -266,22 +242,26 @@ class Client():
             body = dumps(body)
             
             url = self._url + config['search']
-            headers = {'Cookie': self._cookie, 'Accept': 'application/json'}
-            res, body = self._client.send_request(url, method='POST', headers=headers, 
-                                                  body=body, content_type='json')                      
+            auth = '{0}:{1}'.format(self._user, self._passw)
+            auth = encodestring(auth) if (version_info[0] == 2) else encodestring(auth.encode()).decode()
+            headers = {'Accept': 'application/json', 'Authorization': 'Basic ' + auth}
+            res, body = self._client.send_request(url, method='POST', headers=headers, body=body, content_type='json')   
+                               
             result = False
             records = None
             if (res == 200):
-                cnt = body['total']
+                cnt2 = len(body['issues'])
+                cnt = body['total'] if (body['total'] == cnt2) else cnt2
                 records = []
-                for i in xrange(0, cnt):
+                for i in range(0, cnt):
                     record = {}
                     if (fields == None or 'id' in fields):
-                        record['id'] = body['issues'][i]['key']
+                        record['id'] = int(body['issues'][i]['key'].split('-')[-1])
                     for key, value in body['issues'][i]['fields'].items():                 
                         if (fields == None or key in fields):
-                            record[key] = value                                         
-                    records.append(record)       
+                            record[key] = value 
+                    if (record != {}):                                        
+                        records.append(record)       
                             
                 self._mh.dmsg('htk_on_debug_info', self._mh._trn.msg('track_read', cnt), self._mh.fromhere())            
                 ev = event.Event('track_after_read')
@@ -309,6 +289,10 @@ class Client():
         
         self._mh.dmsg('htk_on_debug_info', self._mh._trn.msg('track_creating', 'issue', params), self._mh.fromhere())
         
+        if (not self._is_connected):
+            self._mh.dmsg('htk_on_warning', self._mh._trn.msg('track_not_connected'), self._mh.fromhere()) 
+            return None          
+        
         if (self._default_values != {}):
             for key, value in self._default_values.items():
                 if (key not in params):
@@ -326,13 +310,14 @@ class Client():
             if ('project' not in root['fields']):
                 root['fields']['project'] = {'key': self._project}
             if ('issuetype' not in root['fields']):
-                root['fields']['issuetype'] = {'name': 'Bug'}                  
+                root['fields']['issuetype'] = {'name': 'Bug'}              
             body = dumps(root)
              
             url = self._url + config['issue']
-            headers = {'Cookie': self._cookie, 'Accept': 'application/json'}
-            res, body = self._client.send_request(url, method='POST', headers=headers,
-                                                  body=body, content_type='json')
+            auth = '{0}:{1}'.format(self._user, self._passw)
+            auth = encodestring(auth) if (version_info[0] == 2) else encodestring(auth.encode()).decode()
+            headers = {'Accept': 'application/json', 'Authorization': 'Basic ' + auth}
+            res, body = self._client.send_request(url, method='POST', headers=headers, body=body, content_type='json')
             
         id = None
         if (res in (200, 201)):
@@ -364,6 +349,10 @@ class Client():
         self._mh.dmsg('htk_on_debug_info', self._mh._trn.msg('track_updating', 'issue', id, params), 
                       self._mh.fromhere())
         
+        if (not self._is_connected):
+            self._mh.dmsg('htk_on_warning', self._mh._trn.msg('track_not_connected'), self._mh.fromhere()) 
+            return False          
+        
         ev = event.Event('track_before_update', id, params)
         if (self._mh.fire_event(ev) > 0):
             id = ev.argv(0)
@@ -377,9 +366,10 @@ class Client():
             body = dumps(root)
              
             url = self._url + config['issue'] + '/{0}-{1}'.format(self._project, id)
-            headers = {'Cookie': self._cookie, 'Accept': 'application/json'}
-            res, body = self._client.send_request(url, method='PUT', headers=headers,
-                                                  body=body, content_type='json')
+            auth = '{0}:{1}'.format(self._user, self._passw)
+            auth = encodestring(auth) if (version_info[0] == 2) else encodestring(auth.encode()).decode()
+            headers = {'Accept': 'application/json', 'Authorization': 'Basic ' + auth}
+            res, body = self._client.send_request(url, method='PUT', headers=headers, body=body, content_type='json')
             
         result = False
         if (res in (200, 204)):

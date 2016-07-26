@@ -168,7 +168,7 @@ class Extension(extension.Extension):
             obj: Client
        
         Raises:
-            error: ValueError
+            error: NotImplementedError
                 
         """       
 
@@ -177,8 +177,7 @@ class Extension(extension.Extension):
             mod = import_module('hydratk.extensions.trackapps.{0}'.format(apps[app]))            
             return mod.Client(*args, **kwargs)
         else:
-            raise ValueError('Unknown application:{0}'.format(app))
-            return None  
+            raise NotImplementedError('Unknown application:{0}'.format(app))
         
     def handle_track(self):
         """Method handles command track
