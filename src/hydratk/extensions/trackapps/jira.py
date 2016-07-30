@@ -35,7 +35,7 @@ config = {
   'issue'   : '/rest/api/2/issue'
 }
 
-class Client():
+class Client(object):
     """Class Client
     """
     

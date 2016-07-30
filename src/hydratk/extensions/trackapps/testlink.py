@@ -55,7 +55,7 @@ entities = {
   'tl.reportTCResult'                        : 'test'
 }
 
-class Client():
+class Client(object):
     """Class Client
     """
     

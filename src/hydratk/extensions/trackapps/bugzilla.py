@@ -33,7 +33,7 @@ config = {
   'rest'   : '/rest.cgi/bug'
 }
 
-class Client():
+class Client(object):
     """Class Client
     """
     

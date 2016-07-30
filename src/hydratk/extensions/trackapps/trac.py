@@ -58,7 +58,7 @@ rec_fields = {
   'type'           : 'string' 
 }
 
-class Client():
+class Client(object):
     """Class Client
     """
     

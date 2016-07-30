@@ -70,7 +70,7 @@ rec_fields = {
   'tags'                   : 'object_ref_array'    
 }
 
-class Client():
+class Client(object):
     """Class Client
     """
     

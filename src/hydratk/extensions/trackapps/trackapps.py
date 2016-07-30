@@ -148,13 +148,13 @@ class Extension(extension.Extension):
         self._mh.match_long_option('path', True, 'tr-path', False, option_profile)
         self._mh.match_long_option('steps', True, 'tr-steps', False, option_profile)                   
         
-        self._mh.match_cli_option(('c','config'), True, None, False, option_profile)
-        self._mh.match_cli_option(('d','debug'), True, None, False, option_profile)   
-        self._mh.match_cli_option(('e','debug-channel'), True, None, False, option_profile)
-        self._mh.match_cli_option(('l','language'), True, None, False, option_profile)
-        self._mh.match_cli_option(('m','run-mode'), True, None, False, option_profile)
-        self._mh.match_cli_option(('f','force'), False, None, False, option_profile)
-        self._mh.match_cli_option(('i','interactive'), False, None, False, option_profile)                       
+        self._mh.match_cli_option(('c','config'), True, 'config', False, option_profile)
+        self._mh.match_cli_option(('d','debug'), True, 'debug', False, option_profile)   
+        self._mh.match_cli_option(('e','debug-channel'), True, 'debug-channel', False, option_profile)
+        self._mh.match_cli_option(('l','language'), True, 'language', False, option_profile)
+        self._mh.match_cli_option(('m','run-mode'), True, 'run-mode', False, option_profile)
+        self._mh.match_cli_option(('f','force'), False, 'force', False, option_profile)
+        self._mh.match_cli_option(('i','interactive'), False, 'interactive', False, option_profile)                       
     
     def init_client(self, app, *args, **kwargs):
         """Client factory method
@@ -297,7 +297,7 @@ class Extension(extension.Extension):
             elif (action == 'delete'):
                 self.delete()
             
-            if (self._app in ['qc', 'bugzilla', 'jira']):
+            if (self._app in ['qc', 'bugzilla']):
                 self._client.disconnect()  
             
     def read(self):
@@ -470,7 +470,7 @@ class Extension(extension.Extension):
                         prompt = ''          
                         values = lov[field]              
                         cnt = len(values)
-                        for i in xrange(0, cnt):
+                        for i in range(0, cnt):
                             prompt += '{0} - {1}\n'.format(i+1, values[i])
                             
                         valid = False
@@ -503,7 +503,7 @@ class Extension(extension.Extension):
             if (self._entity in ('defect', 'test-instance')):           
                 id = self._client.create(self._entity, params)
             else:
-                path = CommandlineTool.get_input_option('--tr-path')
+                path = CommandlineTool.get_input_option('tr-path')
                 if (not path):
                     print('Enter path') 
                     path = raw_input(':')
@@ -608,7 +608,7 @@ class Extension(extension.Extension):
                 
             elif (self._entity == 'test'):
                 plan_id = params['plan'] if ('plan' in params) else None
-                if ('plan 'not in params):
+                if ('plan' not in params):
                     print('Enter plan id')
                     plan_id = raw_input(':')
                 status = params['status'] if ('status' in params) else 'p'

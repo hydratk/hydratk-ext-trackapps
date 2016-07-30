@@ -40,7 +40,7 @@ config = {
   'entities' : ['defect', 'test-folder', 'test', 'test-set-folder', 'test-set', 'test-instance']
 }
 
-class Client():
+class Client(object):
     """Class Client
     """
     
