@@ -20,7 +20,7 @@ msg = {
     'track_missing_cookie' : ["V odpovědi se nevrátilo cookie"],
     'track_missing_token'  : ["V odpovědi se nevrátil token"],
     'track_missing_project': ["Projekt {0} nenalezen"],
-    'track_error'          : ["Nastala chyba HTTP status:'{0}', chyba: {1}"],
+    'track_error'          : ["Nastala chyba status:'{0}', chyba: {1}"],
     'track_disconnecting'  : ["Ukončuji spojení se serverem"],
     'track_disconnected'   : ["Spojení se serverem bylo ukončeno"],
     'track_not_connected'  : ["Není navázáno spojení se serverem"],

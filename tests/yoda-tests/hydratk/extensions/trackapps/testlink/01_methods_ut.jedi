@@ -84,7 +84,7 @@ Test-Scenario-2:
         mh = MasterHead.get_head()
         ext = mh._ext['TrackApps']
         c = ext.init_client('testlink')
-        c.connect('http://127.0.0.1:81', '3db69a303c75cdaa08c98b12d5f9f2aa', 'bowman')
+        c.connect('https://127.0.0.1:81', '3db69a303c75cdaa08c98b12d5f9f2aa', 'bowman')
         res = c.client.__class__.__name__        
       
       Validate: |        
@@ -271,7 +271,7 @@ Test-Scenario-3:
       Desc: Invalid dev_key
       
       Test: |
-        url = 'http://127.0.0.1:81'
+        url = 'https://127.0.0.1:81'
         res = c.connect(url, dev_key, project)
       
       Validate: |                       
@@ -426,7 +426,7 @@ Test-Scenario-4:
         mh = MasterHead.get_head()
         ext = mh._ext['TrackApps']  
         c = ext.init_client('testlink')
-        res, recs = c.read_test_suite('')        
+        res, recs = c.read_test_suite('')       
       
       Validate: |       
         this.test_result = res
@@ -585,7 +585,7 @@ Test-Scenario-6:
         c = ext.init_client('testlink')
         url, dev_key, project = 'https://127.0.0.1', '3db69a303c75cdaa08c98b12d5f9f2aa', 'bowman'
         c.connect(url, dev_key, project) 
-        res, recs = c.read_test_plan('plan 2')  
+        res, recs = c.read_test_plan('plan 2') 
       
       Validate: |    
         this.test_result = res
@@ -830,12 +830,12 @@ Test-Scenario-8:
         mh = MasterHead.get_head()
         ext = mh._ext['TrackApps']           
         evs = ['track_before_create', 'track_after_create']
-        reg_ev_hook(mh, evs[0])
-        reg_ev_hook(mh, evs[1])
         c = ext.init_client('testlink')
         url, dev_key, project = 'https://127.0.0.1', '3db69a303c75cdaa08c98b12d5f9f2aa', 'bowman'
         c.connect(url, dev_key, project)
         plan, build = c.create_test_plan('test 2'), 'test'
+        reg_ev_hook(mh, evs[0])
+        reg_ev_hook(mh, evs[1])        
         id = c.create_build(plan, build) 
       
       Validate: |    
@@ -850,7 +850,8 @@ Test-Scenario-8:
         del mh._event_hooks[evs[0]]
         del mh._event_hooks[evs[1]]   
         del events[0]
-        del events[0]             
+        del events[0] 
+        print(events)          
         
   Test-Case-2:
     Id: tc_02
@@ -923,19 +924,19 @@ Test-Scenario-9:
       Test: |
         mh = MasterHead.get_head()
         ext = mh._ext['TrackApps']           
-        evs = ['track_before_read', 'track_after_read']
+        evs = ['track_before_read', 'track_after_read']      
         reg_ev_hook(mh, evs[0])
         reg_ev_hook(mh, evs[1])
         c = ext.init_client('testlink')
         url, dev_key, project = 'https://127.0.0.1', '3db69a303c75cdaa08c98b12d5f9f2aa', 'bowman'
         c.connect(url, dev_key, project)
         id = 3
-        res, recs = c.read_test(id)   
+        res, recs = c.read_test(id)  
       
       Validate: |    
         this.test_result = res
         assert (res), 'read_test = True'
-        assert (recs[0]['testcase_id'] == id), 'id = {0}'.format(id)
+        assert (int(recs['testcase_id']) == id), 'id = {0}'.format(id)
         res = [events[0]._id, events[1]._id]
         this.test_result = str(res)
         assert (res == evs), 'read_test fires {0}'.format(evs)  
@@ -955,7 +956,7 @@ Test-Scenario-9:
       
       Validate: |                
         this.test_result = str(recs)
-        assert (sorted(recs[0].keys()) == fields), 'record contains {0}'.format(fields)
+        assert (sorted(recs.keys()) == fields), 'record contains {0}'.format(fields)
         
   Test-Case-2:
     Id: tc_02
@@ -1043,7 +1044,7 @@ Test-Scenario-10:
         assert (id > 0), 'create_test id {0} > 0'.format(id)    
         res, recs = c.read_test(id)
         this.test_result = str(recs)
-        res = [recs[0]['testcase_id'], recs[0]['name'], recs[0]['author_login'], recs[0]['summary']]
+        res = [int(recs['testcase_id']), recs['name'], recs['author_login'], recs['summary']]
         exp = [id, params['testcasename'], params['authorlogin'], params['summary']]
         assert (res == exp), 'record contains {0}'.format(exp)    
         res = [events[0]._id, events[1]._id]
@@ -1068,7 +1069,7 @@ Test-Scenario-10:
         assert (id > 0), 'create_test id {0} > 0'.format(id)    
         res, recs = c.read_test(id)
         this.test_result = str(recs)
-        res = [recs[0]['testcase_id'], recs[0]['name'], recs[0]['author_login'], recs[0]['summary'], [recs[0]['steps'][0]['actions'], recs[0]['steps'][0]['expected_results']]]
+        res = [int(recs['testcase_id']), recs['name'], recs['author_login'], recs['summary'], [recs['steps'][0]['actions'], recs['steps'][0]['expected_results']]]
         exp = [id, params['testcasename'], params['authorlogin'], params['summary'], [steps[0]['actions'], steps[0]['expected_results']]]
         assert (res == exp), 'record contains {0}'.format(exp)   
         
@@ -1162,7 +1163,7 @@ Test-Scenario-11:
         assert (res), 'add_test_to_plan = True'    
         res, recs = c.read_test_plan(plan)
         this.test_result = str(recs)
-        assert (recs[0]['tcase_id'] == id), 'plan contains test {0}'.format(id)    
+        assert (int(recs[-1]['tcase_id']) == id), 'plan contains test {0}'.format(id)    
         res = [events[0]._id, events[1]._id]
         this.test_result = str(res)
         assert (res == evs), 'add_test_to_plan fires {0}'.format(evs)  
@@ -1185,7 +1186,7 @@ Test-Scenario-11:
         assert (res), 'add_test_to_plan = True'    
         res, recs = c.read_test_plan(plan)
         this.test_result = str(recs)
-        assert (recs[1]['tcase_id'] == id), 'plan contains test {0}'.format(id) 
+        assert (int(recs[-1]['tcase_id']) == id), 'plan contains test {0}'.format(id) 
         
   Test-Case-2:
     Id: tc_02
@@ -1231,19 +1232,7 @@ Test-Scenario-11:
       
       Validate: |    
         this.test_result = res
-        assert (not res), 'add_test_to_plan = False'          
-        
-    Test-Condition-4: 
-      Id: tco_04
-      Name: tco_duplicate
-      Desc: Duplicate test
-      
-      Test: |
-        res = c.add_test_to_plan(id, plan_id=plan_id)   
-      
-      Validate: |    
-        this.test_result = res
-        assert (not res), 'add_test_to_plan = False'    
+        assert (not res), 'add_test_to_plan = False'           
         
 Test-Scenario-12:
   Id: ts_12
@@ -1290,7 +1279,7 @@ Test-Scenario-12:
         assert (res), 'update_test_execution = True'    
         res, recs = c.read_test_plan(plan)
         this.test_result = str(recs)
-        assert (recs[0]['exec_status'] == status), 'status = {0}'.format(status)    
+        assert (recs[-1]['exec_status'] == status), 'status = {0}'.format(status)    
         res = [events[0]._id, events[1]._id]
         this.test_result = str(res)
         assert (res == evs), 'update_test_execution fires {0}'.format(evs)  
@@ -1311,7 +1300,7 @@ Test-Scenario-12:
       Validate: |     
         res, recs = c.read_test_plan(plan)
         this.test_result = str(recs)
-        assert (recs[0]['exec_status'] == status), 'status = {0}'.format(status) 
+        assert (recs[-1]['exec_status'] == status), 'status = {0}'.format(status) 
         
     Test-Condition-3: 
       Id: tco_03
@@ -1325,7 +1314,7 @@ Test-Scenario-12:
       Validate: |     
         res, recs = c.read_test_plan(plan)
         this.test_result = str(recs)
-        assert (recs[0]['exec_status'] == status), 'status = {0}'.format(status)  
+        assert (recs[-1]['exec_status'] == status), 'status = {0}'.format(status)  
         
   Test-Case-2:
     Id: tc_02

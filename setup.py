@@ -44,7 +44,7 @@ entry_points = {
                 
 setup(
       name='hydratk-ext-trackapps',
-      version='0.1.0',
+      version='0.1.1a.dev1',
       description='Interface to bugtracking and test management applications',
       long_description=readme,
       author='Petr Rašek',
@@ -68,3 +68,4 @@ if ('install' in argv or 'bdist_egg' in argv or 'bdist_wheel' in argv):
         call('cp {0} {1}'.format(file, dir), shell=True) 
         
     call('chmod -R a+r /etc/hydratk', shell=True)
+    call('gzip -c doc/trackapps.1 > /usr/local/share/man/man1/trackapps.1', shell=True)

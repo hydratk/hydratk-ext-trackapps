@@ -26,37 +26,8 @@ track_after_delete
 
 from hydratk.core.masterhead import MasterHead
 from hydratk.core import event
-from hydratk.lib.network.rest.client import RESTClient
-from lxml.etree import Element, SubElement, tostring, XMLSyntaxError
-from lxml import objectify
+from hydratk.lib.network.rpc.client import RPCClient
 from sys import version_info
-
-config = {
-  'login'  : '/{0}/login',
-  'rpc'    : '/{0}/login/xmlrpc'
-}
-
-rec_fields = {
-  'id'             : 'int',
-  'status'         : 'string',
-  'changetime'     : 'dateTime.iso8601',
-  'totalhours'     : 'string',
-  '_ts'            : 'string',
-  'description'    : 'string',
-  'reporter'       : 'string',
-  'cc'             : 'string',
-  'resolution'     : 'string',
-  'time'           : 'dateTime.iso8601',
-  'component'      : 'string',
-  'summary'        : 'string',
-  'priority'       : 'string',
-  'keywords'       : 'string',
-  'version'        : 'string',
-  'milestone'      : 'string',
-  'owner'          : 'string',
-  'estimatedhours' : 'string',
-  'type'           : 'string' 
-}
 
 class Client(object):
     """Class Client
@@ -67,9 +38,7 @@ class Client(object):
     _url = None
     _user = None
     _passw = None
-    _domain = None
     _project = None
-    _cookie = None
     _return_fields = None
     _default_values = {}
     _is_connected = None
@@ -85,7 +54,7 @@ class Client(object):
         """  
         
         self._mh = MasterHead.get_head()
-        self._client = RESTClient()  
+        self._client = RPCClient('XMLRPC')  
 
         cfg = self._mh.cfg['Extensions']['TrackApps']['trac'] 
         if ('return_fields' in cfg and cfg['return_fields'] != None):
@@ -129,13 +98,7 @@ class Client(object):
     def project(self):
         """ project property getter """
         
-        return self._project
-    
-    @property
-    def cookie(self):
-        """ cookie property getter """
-        
-        return self._cookie        
+        return self._project      
     
     @property
     def return_fields(self):
@@ -198,28 +161,25 @@ class Client(object):
             self._passw = passw
             self._project = project  
             
-            url = self._url + config['login'].format(self._project)
-            res, body = self._client.send_request(url, self._user, self._passw, 'GET')
+            url = self._url
+            if (self._user != None):
+                if ('http://' in self._url):
+                    url = 'http://{0}:{1}@{2}'.format(self._user, self._passw, self._url.replace('http://', '')) 
+                elif ('https://' in self._url):
+                    url = 'https://{0}:{1}@{2}'.format(self._user, self._passw, self._url.replace('https://', ''))
+                else:
+                    url = '{0}:{1}@{2}'.format(self._user, self._passw, self._url) 
+            
+            url += '/{0}/login/xmlrpc'.format(self._project)
+            res = self._client.init_proxy(url)
         
         result = False
-        if (res == 200): 
-              
-            self._cookie = self._client.get_header('set-cookie')
-            if (self._cookie != None):
-                self._is_connected = True
-                self._mh.dmsg('htk_on_debug_info', self._mh._trn.msg('track_connected'), self._mh.fromhere())            
-                ev = event.Event('track_after_connect')
-                self._mh.fire_event(ev)   
-                result = True
-            else:
-                self._mh.dmsg('htk_on_error', self._mh._trn.msg('track_missing_cookie'), self._mh.fromhere())
-                
-        else:
-            try:
-                error = objectify.fromstring(body).head.title if (body != None) else None
-            except XMLSyntaxError as ex:
-                error = body
-            self._mh.dmsg('htk_on_error', self._mh._trn.msg('track_error', res, error), self._mh.fromhere())    
+        if (res and self._client.call_method('system.getAPIVersion')): 
+            self._mh.dmsg('htk_on_debug_info', self._mh._trn.msg('track_connected'), self._mh.fromhere())            
+            ev = event.Event('track_after_connect')
+            self._mh.fire_event(ev)  
+            self._is_connected = True 
+            result = True
         
         return result  
     
@@ -259,49 +219,27 @@ class Client(object):
         if (ev.will_run_default()):                                      
             
             if (id != None):
-                res, body = self._read_single(id)  
-                recs = [body]                                             
+                body = self._client.call_method('ticket.get', id)   
+                recs = [body] if (body != None) else []                                             
             else:
-                root = Element('methodCall')
-                SubElement(root, 'methodName').text = 'ticket.query'
-                el_params = SubElement(root, 'params')
-                el_param = SubElement(el_params, 'param')
-                SubElement(el_param, 'string').text = query                      
-                body = tostring(root, xml_declaration=True)
-                
-                url = self._url + config['rpc'].format(self._project)
-                headers = {'Cookie': self._cookie, 'Accept': 'application/xml'}                 
-                res, body = self._client.send_request(url, method='POST', headers=headers, body=body,
-                                                      content_type='xml')                
-                
-                if (res == 200):
-                    
-                    recs = []                    
-                    for item in body.params.param.value.array.data.value:
-                        id = item.int
-                        
-                        res, rec_body = self._read_single(id)
-                        if (res == 200):
-                            recs.append(rec_body)                                                                                                                      
+                rec_id = self._client.call_method('ticket.query', query)
+                recs = []                                                                                                                                
+                for id in rec_id:
+                    recs.append(self._client.call_method('ticket.get', id))
                                    
             result = False
             records = None
-            if (res == 200 and not hasattr(body, 'fault')):    
+            
+            if (len(recs) > 0):    
                     
                 records = []        
                 for rec in recs:
                     record = {}
                     
-                    for val in rec.params.param.value.array.data.value:
-                        if (hasattr(val, 'int') and (fields == None or 'id' in fields)):
-                            record['id'] = val.int    
-                        elif (hasattr(val, 'struct')):  
-                                  
-                            for item in val.struct.member:
-                                key = str(item.name)                                                              
-                                value = getattr(item.value, rec_fields[key]) if (key in rec_fields) else None                                                                  
-                                if (fields == None or key in fields):
-                                    record[key] = value            
+                    record['id'] = rec[0]
+                    for key, value in rec[3].items():
+                        if (fields == None or key in fields):
+                            record[key] = str(value)            
                     
                     if (record != {}):            
                         records.append(record)
@@ -309,12 +247,7 @@ class Client(object):
                 self._mh.dmsg('htk_on_debug_info', self._mh._trn.msg('track_read', len(records)), self._mh.fromhere())            
                 ev = event.Event('track_after_read')
                 self._mh.fire_event(ev)   
-                result = True   
-            else:
-                fault_code = body.fault.value.struct.member[0].value.int
-                fault_string = body.fault.value.struct.member[1].value.string
-                message = 'fault_code:{0}, fault_string:{1}'.format(fault_code, fault_string)
-                self._mh.dmsg('htk_on_error', self._mh._trn.msg('track_error', res, message), self._mh.fromhere())                  
+                result = True                   
                       
             return (result, records) 
         
@@ -350,40 +283,21 @@ class Client(object):
             
         if (ev.will_run_default()): 
             
-            root = Element('methodCall')
-            SubElement(root, 'methodName').text = 'ticket.create'
-            el_params = SubElement(root, 'params')
-            el_summary = SubElement(el_params, 'param')
-            el_description = SubElement(el_params, 'param')
-            el_struct = SubElement(SubElement(el_params, 'param'), 'struct')
-                        
+            summary, description, attrs = None, None, {}            
             for key, value in params.items():
                 if (key == 'summary'):
-                    SubElement(el_summary, rec_fields[key]).text = str(value)
+                    summary = str(value)
                 elif (key == 'description'):
-                    SubElement(el_description, rec_fields[key]).text = str(value)
-                elif (key in rec_fields and rec_fields[key] != 'dateTime.iso8601'):
-                    el_member = SubElement(el_struct, 'member')
-                    SubElement(el_member, 'name').text = str(key)
-                    SubElement(SubElement(el_member, 'value'), rec_fields[key]).text = str(value).decode('utf8') if (version_info[0] == 2) else str(value)                   
-            body = tostring(root, xml_declaration=True)
-             
-            url = self._url + config['rpc'].format(self._project)
-            headers = {'Cookie': self._cookie, 'Accept': 'application/xml'}                 
-            res, body = self._client.send_request(url, method='POST', headers=headers, body=body,
-                                                      content_type='xml')
+                    description = str(value)
+                else:
+                    attrs[key] = str(value).decode('utf8') if (version_info[0] == 2) else str(value)                   
                
-        id = None
-        if (res == 200 and not hasattr(body, 'fault')):
-            id = int(body.params.param.value.int)
+        id = self._client.call_method('ticket.create', summary, description, attrs)
+        if (id != None):
+            id = int(id)
             self._mh.dmsg('htk_on_debug_info', self._mh._trn.msg('track_created', id), self._mh.fromhere())            
             ev = event.Event('track_after_create')
-            self._mh.fire_event(ev) 
-        else:
-            fault_code = body.fault.value.struct.member[0].value.int
-            fault_string = body.fault.value.struct.member[1].value.string
-            message = 'fault_code:{0}, fault_string:{1}'.format(fault_code, fault_string)            
-            self._mh.dmsg('htk_on_error', self._mh._trn.msg('track_error', res, message), self._mh.fromhere())            
+            self._mh.fire_event(ev)            
         
         return id            
     
@@ -415,37 +329,19 @@ class Client(object):
             params = ev.argv(1)  
             
         if (ev.will_run_default()): 
-            
-            root = Element('methodCall')
-            SubElement(root, 'methodName').text = 'ticket.update'
-            el_params = SubElement(root, 'params')
-            SubElement(SubElement(el_params, 'param'), 'int').text = str(id)
-            SubElement(SubElement(el_params, 'param'), 'string').text = 'comment'
-            el_struct = SubElement(SubElement(el_params, 'param'), 'struct')
-                        
-            for key, value in params.items():
-                if (key in rec_fields and rec_fields[key] != 'dateTime.iso8601'):
-                    el_member = SubElement(el_struct, 'member')
-                    SubElement(el_member, 'name').text = str(key)
-                    SubElement(SubElement(el_member, 'value'), rec_fields[key]).text = str(value).decode('utf8') if (version_info[0] == 2) else str(value)                       
-            body = tostring(root, xml_declaration=True)
              
-            url = self._url + config['rpc'].format(self._project)
-            headers = {'Cookie': self._cookie, 'Accept': 'application/xml'}                 
-            res, body = self._client.send_request(url, method='POST', headers=headers, body=body,
-                                                      content_type='xml')
+            attrs = {}            
+            for key, value in params.items():
+                attrs[key] = str(value).decode('utf8') if (version_info[0] == 2) else str(value)                      
+                    
+            body = self._client.call_method('ticket.update', id, 'comment', attrs)
                
         result = False
-        if (res == 200 and not hasattr(body, 'fault')):
+        if (body != None):
             result = True
             self._mh.dmsg('htk_on_debug_info', self._mh._trn.msg('track_updated', id), self._mh.fromhere())            
             ev = event.Event('track_after_update')
-            self._mh.fire_event(ev) 
-        else:
-            fault_code = body.fault.value.struct.member[0].value.int
-            fault_string = body.fault.value.struct.member[1].value.string
-            message = 'fault_code:{0}, fault_string:{1}'.format(fault_code, fault_string)            
-            self._mh.dmsg('htk_on_error', self._mh._trn.msg('track_error', res, message), self._mh.fromhere())            
+            self._mh.fire_event(ev)            
         
         return result    
     
@@ -474,54 +370,14 @@ class Client(object):
         if (self._mh.fire_event(ev) > 0):
             id = ev.argv(0)  
             
-        if (ev.will_run_default()): 
-            
-            root = Element('methodCall')
-            SubElement(root, 'methodName').text = 'ticket.delete'
-            el_params = SubElement(root, 'params')
-            SubElement(SubElement(el_params, 'param'), 'int').text = str(id)                  
-            body = tostring(root, xml_declaration=True)
-             
-            url = self._url + config['rpc'].format(self._project)
-            headers = {'Cookie': self._cookie, 'Accept': 'application/xml'}                 
-            res, body = self._client.send_request(url, method='POST', headers=headers, body=body,
-                                                      content_type='xml')
-               
+        if (ev.will_run_default()):             
+            body = self._client.call_method('ticket.delete', id)
+              
         result = False
-        if (res == 200 and not hasattr(body, 'fault')):
+        if (body != None):
             result = True
             self._mh.dmsg('htk_on_debug_info', self._mh._trn.msg('track_deleted', id), self._mh.fromhere())            
             ev = event.Event('track_after_delete')
-            self._mh.fire_event(ev) 
-        else:
-            fault_code = body.fault.value.struct.member[0].value.int
-            fault_string = body.fault.value.struct.member[1].value.string
-            message = 'fault_code:{0}, fault_string:{1}'.format(fault_code, fault_string)            
-            self._mh.dmsg('htk_on_error', self._mh._trn.msg('track_error', res, message), self._mh.fromhere())            
+            self._mh.fire_event(ev)            
         
         return result                  
-        
-    def _read_single(self, id):  
-        """Method reads single record
-        
-        Args: 
-           id (int): record id         
-             
-        Returns:
-           tuple: result (bool), record (xml)
-                
-        """    
-        
-        root = Element('methodCall')
-        SubElement(root, 'methodName').text = 'ticket.get'
-        el_params = SubElement(root, 'params')
-        el_param = SubElement(el_params, 'param')
-        SubElement(el_param, 'int').text = str(id)                           
-        body = tostring(root, xml_declaration=True)  
-         
-        url = self._url + config['rpc'].format(self._project)
-        headers = {'Cookie': self._cookie, 'Accept': 'application/xml'}                 
-        res, body = self._client.send_request(url, method='POST', headers=headers, body=body,
-                                              content_type='xml') 
-        
-        return (res, body)                                          

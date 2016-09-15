@@ -20,7 +20,7 @@ msg = {
     'track_missing_cookie' : ["Cookie missing in response"],
     'track_missing_token'  : ["Token missing in response"],
     'track_missing_project': ["Project {0} not found"],
-    'track_error'          : ["Error occured HTTP status:'{0}', error: {1}"],
+    'track_error'          : ["Error occured status:'{0}', error: {1}"],
     'track_disconnecting'  : ["Disconnecting from server"],
     'track_disconnected'   : ["Disconnected from server"],
     'track_not_connected'  : ["Not connected to server"],

@@ -28,32 +28,8 @@ track_after_read_plan
 
 from hydratk.core.masterhead import MasterHead
 from hydratk.core import event
-from hydratk.lib.network.rest.client import RESTClient
-from lxml.etree import Element, SubElement, tostring
-from lxml import objectify
+from hydratk.lib.network.rpc.client import RPCClient
 from sys import version_info
-
-config = {
-  'rpc'      : '/testlink/lib/api/xmlrpc/v1/xmlrpc.php'
-}
-
-entities = {
-  'tl.getTestProjectByName'                  : 'project',
-  'tl.getFirstLevelTestSuitesForTestProject' : 'test_suite',
-  'tl.getTestSuitesForTestSuite'             : 'test_suite',
-  'tl.getTestCasesForTestSuite'              : 'test_suite',
-  'tl.getTestSuiteByID'                      : 'test_suite',
-  'tl.createTestSuite'                       : 'test_suite',
-  'tl.getTestPlanByName'                     : 'test_plan',
-  'tl.getTestCasesForTestPlan'               : 'test_plan',
-  'tl.createTestPlan'                        : 'test_plan',
-  'tl.addTestCaseToTestPlan'                 : 'test_plan',    
-  'tl.getLatestBuildForTestPlan'             : 'build',
-  'tl.createBuild'                           : 'build',
-  'tl.getTestCase'                           : 'test',
-  'tl.createTestCase'                        : 'test',  
-  'tl.reportTCResult'                        : 'test'
-}
 
 class Client(object):
     """Class Client
@@ -80,7 +56,7 @@ class Client(object):
         """  
         
         self._mh = MasterHead.get_head()
-        self._client = RESTClient()   
+        self._client = RPCClient('XMLRPC')   
         
         cfg = self._mh.cfg['Extensions']['TrackApps']['testlink']  
         if ('return_fields' in cfg and cfg['return_fields'] != None):
@@ -123,12 +99,6 @@ class Client(object):
         """ project id property getter """
         
         return self._project_id
-    
-    @property
-    def cookie(self):
-        """ cookie property getter """
-        
-        return self._cookie
     
     @property
     def return_fields(self):
@@ -184,280 +154,31 @@ class Client(object):
         if (ev.will_run_default()):
             self._url = url
             self._dev_key = dev_key
-            self._project = project
+            self._project = project                    
             
-            root = Element('methodCall')
-            SubElement(root, 'methodName').text = 'tl.getTestProjectByName'
-            params = {'testprojectname': self._project}
-            root.append(self._prepare_params('project', params))            
-            body = tostring(root, xml_declaration=True)
-            
-            url = self._url + config['rpc']
-            res, body = self._client.send_request(url, 'POST', body=body, content_type='xml')
+            url = self._url + '/testlink/lib/api/xmlrpc/v1/xmlrpc.php'
+            params = {'testprojectname': self._project, 'devKey': self._dev_key}
+            res = self._client.init_proxy(url)            
          
         result = False   
-        if (res == 200 and not hasattr(body, 'fault')):   
-               
-            value = body.params.param.value
-            elem = value.array.data.value if (hasattr(value, 'array')) else value
-            for item in elem.struct.member:
-                if (item.name == 'id' and hasattr(item.value, 'string')):
-                    self._project_id = int(item.value.string)
-                    break
-                if (item.name in ['msg', 'message']):
-                    msg = item.value.string
-                    break  
-                                           
-            if (self._project_id != None):  
-                self._is_connected = True 
-                self._mh.dmsg('htk_on_debug_info', self._mh._trn.msg('track_connected'), self._mh.fromhere())            
-                ev = event.Event('track_after_connect')
-                self._mh.fire_event(ev) 
-                result = True
-            else:
-                self._mh.dmsg('htk_on_error', self._mh._trn.msg('track_error', res, msg), self._mh.fromhere())                 
-        elif (hasattr(body, 'fault')):
-            fault_code = body.fault.value.struct.member[0].value.int
-            fault_string = body.fault.value.struct.member[1].value.string
-            message = 'fault_code:{0}, fault_string:{1}'.format(fault_code, fault_string)            
-            self._mh.dmsg('htk_on_error', self._mh._trn.msg('track_error', res, message), self._mh.fromhere())      
-        
-        return result     
-           
-    def _read(self, method, params={}, fields=None): 
-        """Method reads records
-        
-        Args: 
-           method (str): method title
-           params (dict): method params, key - param name, value - param value
-           fields (list): fields to be returned, default all
-           
-        Returns:
-           tuple: result (bool), records (list of dictionary)
-           
-        Raises:
-           event: track_before_read
-           event: track_after_read
-                
-        """   
-        
-        entity = entities[method]
-        message = 'entity:{0}, params:{1}, field:{2}'.format(entity, params, fields)
-        self._mh.dmsg('htk_on_debug_info', self._mh._trn.msg('track_reading', message), self._mh.fromhere())
-        
-        if (not self._is_connected):
-            self._mh.dmsg('htk_on_warning', self._mh._trn.msg('track_not_connected'), self._mh.fromhere()) 
-            return False, None          
-        
-        if (fields == None and self._return_fields != None):
-            fields = self._return_fields        
-        
-        ev = event.Event('track_before_read', method, params, fields)
-        if (self._mh.fire_event(ev) > 0):
-            method = ev.argv(0)
-            params = ev.argv(1)
-            fields = ev.argv(2)
+        if (res != None):   
+            body = self._client.call_method('tl.getTestProjectByName', params)
             
-        if (ev.will_run_default()):                                      
-            
-            root = Element('methodCall')
-            SubElement(root, 'methodName').text = method
-            root.append(self._prepare_params(entity, params))                    
-            body = tostring(root, xml_declaration=True)
-                
-            url = self._url + config['rpc']          
-            res, body = self._client.send_request(url, method='POST', body=body, content_type='xml')                                                                                                                                   
-                                   
-        result = False
-        records = None
-        if (res == 200 and not hasattr(body, 'fault')):                                        
-            records = []
-            parse_simple = True
-            
-            elem = body.params.param.value
-            if (hasattr(elem, 'array') and hasattr(elem.array.data, 'value')):
-                elem = elem.array.data.value
-                           
-            for val in elem:                                
-                if (hasattr(val, 'struct')):
-                    record = {}  
-                                
-                    for item in val.struct.member:
-                        key = str(item.name)
-                        if (key == 'steps'): 
-                            value = self._parse_steps(item.value, fields) 
-                        elif (key.isdigit()):
-                            if (entity == 'test_plan'):
-                                value = self._parse_plan_tests(item.value, fields)
-                            elif (entity == 'test_suite'):
-                                value = self._parse_suites(item.value)
-                            parse_simple = False                            
-                            if (value != {}):
-                                records.append(value)
-                                
-                        elif (key in ['msg', 'message']):
-                            msg = item.value.string
-                            self._mh.dmsg('htk_on_error', self._mh._trn.msg('track_error', res, msg), self._mh.fromhere()) 
-                            return (False, None)
-                        elif (hasattr(item.value, 'string')):   
-                            value = getattr(item.value, 'string')
-                        elif (hasattr(item.value, 'int')):   
-                            value = getattr(item.value, 'int')                                                
-
-                        if (parse_simple and (fields == None or key in fields)):                                                                                              
-                            record[key] = value
-                        
-                    if (record != {}):                               
-                        records.append(record)                
-                
-            self._mh.dmsg('htk_on_debug_info', self._mh._trn.msg('track_read', len(records)), self._mh.fromhere())            
-            ev = event.Event('track_after_read')
-            self._mh.fire_event(ev)   
-            result = True   
-        else:
-            fault_code = body.fault.value.struct.member[0].value.int
-            fault_string = body.fault.value.struct.member[1].value.string
-            message = 'fault_code:{0}, fault_string:{1}'.format(fault_code, fault_string)
-            self._mh.dmsg('htk_on_error', self._mh._trn.msg('track_error', res, message), self._mh.fromhere())                  
-                     
-        return (result, records)
-    
-    def _create(self, method, params={}):  
-        """Method creates record
+            if (body != None): 
+                if (body.__class__.__name__ == 'list'):
+                    body = body[0]
+                    
+                self._project_id = int(body['id']) if ('id' in body.keys()) else None                                           
+                if (self._project_id != None):  
+                    self._is_connected = True 
+                    self._mh.dmsg('htk_on_debug_info', self._mh._trn.msg('track_connected'), self._mh.fromhere())            
+                    ev = event.Event('track_after_connect')
+                    self._mh.fire_event(ev) 
+                    result = True
+                else:
+                    self._mh.dmsg('htk_on_error', self._mh._trn.msg('track_error', body['code'], body['message']), self._mh.fromhere())                      
         
-        Args: 
-           method (str): method
-           params (dict): record content, key - field name, value - field value
-             
-        Returns:
-           int: record id
-           
-        Raises:
-           event: track_before_create
-           event: track_after_create
-                
-        """       
-
-        entity = entities[method]
-        self._mh.dmsg('htk_on_debug_info', self._mh._trn.msg('track_creating', entity, params), self._mh.fromhere())
-        
-        if (not self._is_connected):
-            self._mh.dmsg('htk_on_warning', self._mh._trn.msg('track_not_connected'), self._mh.fromhere()) 
-            return None        
-        
-        if (self._default_values != None):
-            for key, value in self._default_values.items():
-                if (key not in params):
-                    params[key] = value 
-
-        ev = event.Event('track_before_create', method, params)
-        if (self._mh.fire_event(ev) > 0):
-            method = ev.argv(0)
-            params = ev.argv(1)  
-            
-        if (ev.will_run_default()): 
-            
-            root = Element('methodCall')
-            SubElement(root, 'methodName').text = method
-            root.append(self._prepare_params(entity, params))                    
-            body = tostring(root, xml_declaration=True)
-                
-            url = self._url + config['rpc']           
-            res, body = self._client.send_request(url, method='POST', body=body, content_type='xml') 
-
-        id = None
-        if (res == 200 and not hasattr(body, 'fault')): 
-            value = body.params.param.value
-            elem = value.array.data.value if (hasattr(value, 'array')) else value                                                                       
-            for item in elem.struct.member:
-                if (item.name == 'id' and hasattr(item.value, 'string')):
-                    id = int(item.value.string)
-                    break
-                if (item.name in ['msg', 'message']):
-                    msg = item.value.string
-                    break
-             
-            msg = None 
-            if (id != None): 
-                self._mh.dmsg('htk_on_debug_info', self._mh._trn.msg('track_created', id), self._mh.fromhere())            
-                ev = event.Event('track_after_create')
-                self._mh.fire_event(ev)
-            else:
-                self._mh.dmsg('htk_on_error', self._mh._trn.msg('track_error', res, msg), self._mh.fromhere())       
-        else:
-            fault_code = body.fault.value.struct.member[0].value.int
-            fault_string = body.fault.value.struct.member[1].value.string
-            message = 'fault_code:{0}, fault_string:{1}'.format(fault_code, fault_string)
-            self._mh.dmsg('htk_on_error', self._mh._trn.msg('track_error', res, message), self._mh.fromhere())           
-        
-        return id 
-    
-    def _update(self, method, params={}):          
-        """Method updates record
-        
-        Args: 
-           method (str): method
-           params (dict): record content, key - field name, value - field value
-             
-        Returns:
-           bool: result
-           
-        Raises:
-           event: track_before_update
-           event: track_after_update
-                
-        """       
-
-        entity = entities[method]
-        id = params['testcaseid']
-        self._mh.dmsg('htk_on_debug_info', self._mh._trn.msg('track_updating', entity, id, params), self._mh.fromhere())
-
-        if (not self._is_connected):
-            self._mh.dmsg('htk_on_warning', self._mh._trn.msg('track_not_connected'), self._mh.fromhere()) 
-            return False  
-
-        ev = event.Event('track_before_update', method, params)
-        if (self._mh.fire_event(ev) > 0):
-            method = ev.argv(0)
-            params = ev.argv(1)  
-            
-        if (ev.will_run_default()): 
-            
-            root = Element('methodCall')
-            SubElement(root, 'methodName').text = method
-            root.append(self._prepare_params(entity, params))                    
-            body = tostring(root, xml_declaration=True)
-                
-            url = self._url + config['rpc']           
-            res, body = self._client.send_request(url, method='POST', body=body, content_type='xml') 
-
-        result = False
-        if (res == 200 and not hasattr(body, 'fault')): 
-            
-            value = body.params.param.value
-            elem = value.array.data.value if (hasattr(value, 'array')) else value   
-            msg = None                                                                    
-            for item in elem.struct.member:
-                if (item.name == 'status' and hasattr(item.value, 'boolean')):
-                    result = True if (int(item.value.boolean) == 1) else False
-                    break
-                if (item.name in ['msg', 'message']):
-                    msg = item.value.string
-                    break
-             
-            if (result): 
-                self._mh.dmsg('htk_on_debug_info', self._mh._trn.msg('track_updated', id), self._mh.fromhere())            
-                ev = event.Event('track_after_update')
-                self._mh.fire_event(ev)     
-            else:
-                self._mh.dmsg('htk_on_error', self._mh._trn.msg('track_error', res, msg), self._mh.fromhere()) 
-        else:
-            fault_code = body.fault.value.struct.member[0].value.int
-            fault_string = body.fault.value.struct.member[1].value.string
-            message = 'fault_code:{0}, fault_string:{1}'.format(fault_code, fault_string)
-            self._mh.dmsg('htk_on_error', self._mh._trn.msg('track_error', res, message), self._mh.fromhere())           
-        
-        return result         
+        return result       
         
     def read_test_suite(self, path, steps=True, fields=None):
         """Method reads tests under test suite
@@ -495,24 +216,23 @@ class Client(object):
                     
             id = self._get_suite(path)            
             if (id == None):
-                return (False, None)
+                return False, None
             
-            method = 'tl.getTestCasesForTestSuite'
             details = 'full' if (steps) else 'simple'
-            params = {'testsuiteid': id, 'details': details}
-            result, records = self._read(method, params)
+            params = {'devKey': self._dev_key, 'testsuiteid': id, 'details': details}
+            recs = self._client.call_method('tl.getTestCasesForTestSuite', params)
+            if (recs == None):    
+                return False, None
                 
             tests = {}
             suites = {str(id): {'name': path, 'parent': None, 'path': True}}
-            for record in records:
+            for record in recs:
                 parent = str(record['parent_id'])
                 parent_orig = parent                 
                     
                 while (parent != None and parent not in suites):
-                    method = 'tl.getTestSuiteByID'
-                    params = {'testsuiteid': parent}
-                    res, records = self._read(method, params)     
-                    rec = records[0]                   
+                    params = {'devKey': self._dev_key, 'testsuiteid': parent}
+                    rec = self._client.call_method('tl.getTestSuiteByID', params)                   
                     suites[parent] = {'name': rec['name'], 'parent': str(rec['parent_id']), 'path': False}
                     parent = str(rec['parent_id'])
                     
@@ -536,14 +256,12 @@ class Client(object):
                 if (record_new != {}):  
                     tests[suite_name].append(record_new)
              
-        if (result):   
-            self._mh.dmsg('htk_on_debug_info', self._mh._trn.msg('track_folder_read', len(records)), 
+        if (recs != None):   
+            self._mh.dmsg('htk_on_debug_info', self._mh._trn.msg('track_folder_read', len(recs)), 
                           self._mh.fromhere())            
             ev = event.Event('track_after_read_suite')
             self._mh.fire_event(ev)                   
-            return (True, tests)
-        else:
-            return (False, None) 
+            return True, tests
         
     def create_test_suite(self, path, name, details=None):  
         """Method creates test folder on path
@@ -555,26 +273,48 @@ class Client(object):
              
         Returns:
            int: suite id
+           
+        Raises:
+           event: track_before_create
+           event: track_after_create
                 
         """               
         
+        params = 'path:{0}, name:{1}, details:{2}'.format(path, name, details)
+        self._mh.dmsg('htk_on_debug_info', self._mh._trn.msg('track_creating', 'test_suite', params), self._mh.fromhere())        
+        
         if (not self._is_connected):
             self._mh.dmsg('htk_on_warning', self._mh._trn.msg('track_not_connected'), self._mh.fromhere()) 
-            return None          
+            return None  
         
-        suite = self._get_suite(path)
-        if (suite == None):
-            return None
+        ev = event.Event('track_before_create', path, name, details)
+        if (self._mh.fire_event(ev) > 0):
+            path = ev.argv(0)
+            name = ev.argv(1)
+            details = ev.argv(2)                
         
-        method = 'tl.createTestSuite'
-        params = {
-                  'testprojectid': self._project_id, 
-                  'testsuitename': name,
-                  'parentid': suite,
-                  'details': details
-                 }
+        if (ev.will_run_default()): 
+            suite = self._get_suite(path)
+            if (suite == None):
+                return None
         
-        return self._create(method, params)
+            params = {'devKey': self._dev_key, 'testprojectid': self._project_id, 'testsuitename': name, 'parentid': suite, 'details': details}
+            body = self._client.call_method('tl.createTestSuite', params)
+          
+        id = None    
+        if (body != None): 
+            if (body.__class__.__name__ == 'list'):
+                body = body[0]
+                    
+            id = int(body['id']) if ('id' in body.keys() and int(body['id']) > 0) else None                    
+            if (id != None):
+                self._mh.dmsg('htk_on_debug_info', self._mh._trn.msg('track_created', id), self._mh.fromhere())            
+                ev = event.Event('track_after_create')
+                self._mh.fire_event(ev) 
+            else:
+                self._mh.dmsg('htk_on_error', self._mh._trn.msg('track_error', -1, body['msg']), self._mh.fromhere())                               
+        
+        return id
     
     def read_test_plan(self, plan=None, plan_id=None, build_id=None, fields=None):
         """Method reads tests under plan
@@ -613,55 +353,57 @@ class Client(object):
         if (ev.will_run_default()): 
             
             if (plan != None):
-                method = 'tl.getTestPlanByName'
-                params = {
-                          'testprojectname': self._project,
-                          'testplanname': plan
-                         } 
-                res, plan = self._read(method, params)
-                if (not res):
-                    return (False, None)
-            
-                plan_id = plan[0]['id']
+                params = {'devKey': self._dev_key, 'testprojectname': self._project, 'testplanname': plan} 
+                body = self._client.call_method('tl.getTestPlanByName', params)
+                if (body.__class__.__name__ == 'list'):
+                    body = body[0]                
+                    
+                plan_id = body['id'] if ('id' in body.keys()) else None
+                if (plan_id == None):
+                    self._mh.dmsg('htk_on_error', self._mh._trn.msg('track_error', body['code'], body['message']), self._mh.fromhere())
+                    return False, None
             
             if (build_id == None):
-                method = 'tl.getLatestBuildForTestPlan'
-                params = {'testplanid': plan_id}
-                res, build = self._read(method, params)
+                params = {'devKey': self._dev_key, 'testplanid': plan_id}
+                body = self._client.call_method('tl.getLatestBuildForTestPlan', params)
+                if (body.__class__.__name__ == 'list'):
+                    body = body[0]  
+                                  
+                build_id = body['id'] if ('id' in body.keys()) else None 
+                if (build_id == None):
+                    self._mh.dmsg('htk_on_error', self._mh._trn.msg('track_error', body['code'], body['message']), self._mh.fromhere())
+                    return False, None                          
             
-                if (not res):
-                    return (False, None)
+            params = {'devKey': self._dev_key, 'testplanid': plan_id, 'buildid': build_id}             
+            recs = self._client.call_method('tl.getTestCasesForTestPlan', params)
             
-                build_id = build[0]['id']            
-            
-            method = 'tl.getTestCasesForTestPlan'
-            params = {
-                      'testplanid': plan_id,
-                      'buildid': build_id
-                     } 
-            
-            result, records = self._read(method, params)
-            if (records == None):
-                return (False, None)
-            
-            records_new = []           
-            for record in records:
-                record_new = {}  
-                for key, value in record.items():  
-                    if (fields == None or key in fields):                                                                                              
-                        record_new[key] = value                     
+            records_new = []   
+            if (len(recs) > 0):
                 
-                if (record_new != {}):  
-                    records_new.append(record_new)            
+                if (recs.__class__.__name__ == 'list'):
+                    self._mh.dmsg('htk_on_error', self._mh._trn.msg('track_error', recs[0]['code'], recs[0]['message']), self._mh.fromhere())
+                    return False, None                                           
+                
+                records = []    
+                for key in sorted(recs.keys()):
+                    records.append(recs[key][0])                
+                for record in records:
+                    record_new = {}  
+                    for key, value in record.items():  
+                        if (fields == None or key in fields):                                                                                              
+                            record_new[key] = value                     
+                
+                    if (record_new != {}):  
+                        records_new.append(record_new)            
             
-        if (result):   
+        if (recs != None):   
             self._mh.dmsg('htk_on_debug_info', self._mh._trn.msg('track_folder_read', len(records_new)), 
                           self._mh.fromhere())            
             ev = event.Event('track_after_read_plan')
             self._mh.fire_event(ev)                   
-            return (True, records_new)
+            return True, records_new
         else:
-            return (False, None)         
+            return False, None         
     
     def create_test_plan(self, name, notes=None):  
         """Method creates test plan
@@ -672,21 +414,43 @@ class Client(object):
              
         Returns:
            int: plan id
+           
+        Raises:
+           event: track_before_create
+           event: track_after_create
                 
         """  
+        
+        message = 'name:{0}, notes:{1}'.format(name, notes)
+        self._mh.dmsg('htk_on_debug_info', self._mh._trn.msg('track_creating', 'test_plan', message), self._mh.fromhere())         
         
         if (not self._is_connected):
             self._mh.dmsg('htk_on_warning', self._mh._trn.msg('track_not_connected'), self._mh.fromhere()) 
             return None        
         
-        method = 'tl.createTestPlan'
-        params = {
-                  'testprojectname': self._project,
-                  'testplanname': name,
-                  'notes': notes
-                 }  
+        ev = event.Event('track_before_create', name, notes)
+        if (self._mh.fire_event(ev) > 0):            
+            name = ev.argv(0)
+            notes = ev.argv(1)                
         
-        return self._create(method, params) 
+        if (ev.will_run_default()):                 
+            params = {'devKey': self._dev_key, 'testprojectname': self._project, 'testplanname': name, 'notes': notes}  
+            body = self._client.call_method('tl.createTestPlan', params)
+        
+        id = None    
+        if (body != None): 
+            if (body.__class__.__name__ == 'list'):
+                body = body[0]
+                    
+            id = int(body['id']) if ('id' in body.keys() and int(body['id']) > 0) else None                    
+            if (id != None):
+                self._mh.dmsg('htk_on_debug_info', self._mh._trn.msg('track_created', id), self._mh.fromhere())            
+                ev = event.Event('track_after_create')
+                self._mh.fire_event(ev) 
+            else:
+                self._mh.dmsg('htk_on_error', self._mh._trn.msg('track_error', body['code'], body['message']), self._mh.fromhere())                               
+        
+        return id
     
     def create_build(self, plan, name, notes=None):
         """Method creates build
@@ -698,21 +462,44 @@ class Client(object):
              
         Returns:
            int: build id
+           
+        Raises:
+           event: track_before_create
+           event: track_after_create
                 
         """         
     
+        message = 'plan:{0}, name:{1}, notes:{1}'.format(plan, name, notes)
+        self._mh.dmsg('htk_on_debug_info', self._mh._trn.msg('track_creating', 'build', message), self._mh.fromhere())         
+        
         if (not self._is_connected):
             self._mh.dmsg('htk_on_warning', self._mh._trn.msg('track_not_connected'), self._mh.fromhere()) 
-            return None    
-    
-        method = 'tl.createBuild'
-        params = {
-                  'testplanid': plan,
-                  'buildname': name,
-                  'buildnotes': notes
-                 }
+            return None        
         
-        return self._create(method, params)
+        ev = event.Event('track_before_create', plan, name, notes)
+        if (self._mh.fire_event(ev) > 0):            
+            plan = ev.argv(0)
+            name = ev.argv(1)
+            notes = ev.argv(2)                
+        
+        if (ev.will_run_default()):                 
+            params = {'devKey': self._dev_key, 'testplanid': plan, 'buildname': name, 'buildnotes': notes}  
+            body = self._client.call_method('tl.createBuild', params)
+        
+        id = None    
+        if (body != None): 
+            if (body.__class__.__name__ == 'list'):
+                body = body[0]
+                    
+            id = int(body['id']) if ('id' in body.keys() and int(body['id']) > 0) else None                    
+            if (id != None):
+                self._mh.dmsg('htk_on_debug_info', self._mh._trn.msg('track_created', id), self._mh.fromhere())            
+                ev = event.Event('track_after_create')
+                self._mh.fire_event(ev) 
+            else:
+                self._mh.dmsg('htk_on_error', self._mh._trn.msg('track_error', body['code'], body['message']), self._mh.fromhere())                               
+        
+        return id
     
     def read_test(self, id, fields=None):  
         """Method reads test
@@ -723,17 +510,49 @@ class Client(object):
              
         Returns:
            tuple: result (bool), test (dict)
+           
+        Raises:
+           event: track_before_read
+           event: track_after_read
                 
         """               
-        
+                
+        message = 'id:{0}, fields:{1}'.format(id, fields)
+        self._mh.dmsg('htk_on_debug_info', self._mh._trn.msg('track_reading', 'test', message), self._mh.fromhere())
+                   
         if (not self._is_connected):
             self._mh.dmsg('htk_on_warning', self._mh._trn.msg('track_not_connected'), self._mh.fromhere()) 
-            return False, None          
+            return False, None      
         
-        method = 'tl.getTestCase'
-        params = {'testcaseid': id}
+        ev = event.Event('track_before_read', id, fields)
+        if (self._mh.fire_event(ev) > 0):            
+            id = ev.argv(0)
+            fields = ev.argv(1)                
         
-        return self._read(method, params, fields)     
+        if (ev.will_run_default()):                              
+            params = {'devKey': self._dev_key, 'testcaseid': id}
+            body = self._client.call_method('tl.getTestCase', params)
+        
+        result, test = False, None
+        if (body != None): 
+            if (body.__class__.__name__ == 'list'):
+                body = body[0]            
+
+            id = body['id'] if ('id' in body.keys() and int(body['id']) > 0) else None                    
+            if (id != None):
+                test = {}
+                for key, value in body.items():
+                    if (fields == None or key in fields):
+                        test[key] = value
+                
+                self._mh.dmsg('htk_on_debug_info', self._mh._trn.msg('track_read', 1), self._mh.fromhere())            
+                ev = event.Event('track_after_read')
+                self._mh.fire_event(ev) 
+                result = True
+            else:
+                self._mh.dmsg('htk_on_error', self._mh._trn.msg('track_error', body['code'], body['message']), self._mh.fromhere())                               
+        
+        return result, test     
     
     def create_test(self, path, params={}, steps=[]):  
         """Method creates test
@@ -745,23 +564,61 @@ class Client(object):
              
         Returns:
            int: test id
+           
+        Raises:
+           event: track_before_create
+           event: track_after_create
                 
         """               
         
+        message = 'path:{0}, params:{1}, steps:{2}'.format(path, params, steps)
+        self._mh.dmsg('htk_on_debug_info', self._mh._trn.msg('track_creating', 'test', message), self._mh.fromhere())         
+        
         if (not self._is_connected):
             self._mh.dmsg('htk_on_warning', self._mh._trn.msg('track_not_connected'), self._mh.fromhere()) 
-            return None        
+            return None  
         
-        suite = self._get_suite(path)
-        if (suite == None):
-            return None
+        if (self._default_values != None):
+            for key, value in self._default_values.items():
+                if (key not in params):
+                    params[key] = value         
         
-        method = 'tl.createTestCase'
-        params['testprojectid'] = self._project_id
-        params['testsuiteid'] = suite        
-        params['steps'] = steps
+        ev = event.Event('track_before_create', path, params, steps)
+        if (self._mh.fire_event(ev) > 0):            
+            path = ev.argv(0)
+            params = ev.argv(1)
+            steps = ev.argv(2)                
         
-        return self._create(method, params)  
+        if (ev.will_run_default()):                                    
+            suite = self._get_suite(path)
+            if (suite == None):
+                return None
+            
+            for i in range(0, len(steps)):
+                if ('step_number' not in steps[i].keys()):
+                    steps[i]['step_number'] = i+1
+            
+            params['devKey'] = self._dev_key
+            params['testprojectid'] = self._project_id
+            params['testsuiteid'] = suite        
+            params['steps'] = steps            
+            body = self._client.call_method('tl.createTestCase', params)
+        
+        
+        id = None    
+        if (body != None): 
+            if (body.__class__.__name__ == 'list'):
+                body = body[0]
+                    
+            id = int(body['id']) if ('id' in body.keys() and int(body['id']) > 0) else None                    
+            if (id != None):
+                self._mh.dmsg('htk_on_debug_info', self._mh._trn.msg('track_created', id), self._mh.fromhere())            
+                ev = event.Event('track_after_create')
+                self._mh.fire_event(ev) 
+            else:
+                self._mh.dmsg('htk_on_error', self._mh._trn.msg('track_error', body['code'], body['message']), self._mh.fromhere())                               
+        
+        return id 
     
     def add_test_to_plan(self, test, plan=None, plan_id=None):
         """Method adds test to plan
@@ -773,37 +630,61 @@ class Client(object):
              
         Returns:
            bool: result
+           
+        Raises:
+           event: track_before_update
+           event: track_after_update
                 
         """           
         
+        message = 'plan:{0}, plan_id:{1}'.format(plan, plan_id)
+        self._mh.dmsg('htk_on_debug_info', self._mh._trn.msg('track_updating', 'test_plan', test, message), self._mh.fromhere())            
+        
         if (not self._is_connected):
             self._mh.dmsg('htk_on_warning', self._mh._trn.msg('track_not_connected'), self._mh.fromhere()) 
-            return False        
+            return False 
         
-        if (plan != None):
-            method = 'tl.getTestPlanByName'
-            params = {
-                      'testprojectname': self._project,
-                      'testplanname': plan
-                     } 
-            res, plan = self._read(method, params)
-            if (not res):
-                return False
+        ev = event.Event('track_before_update', test, plan, plan_id)
+        if (self._mh.fire_event(ev) > 0):            
+            test = ev.argv(0)
+            plan = ev.argv(1)
+            plan_id = ev.argv(2)                
+        
+        if (ev.will_run_default()):                
+        
+            if (plan != None):
+                params = {'devKey': self._dev_key, 'testprojectname': self._project, 'testplanname': plan} 
+                body = self._client.call_method('tl.getTestPlanByName', params)
+                
+                if (body.__class__.__name__ == 'list'):
+                    body = body[0]                
+                    
+                plan_id = body['id'] if ('id' in body.keys()) else None
+                if (plan_id == None):
+                    self._mh.dmsg('htk_on_error', self._mh._trn.msg('track_error', body['code'], body['message']), self._mh.fromhere())
+                    return False, None
+                           
+            params = {'devKey': self._dev_key, 'testprojectid': self._project_id, 'testplanid': plan_id, 'testcaseid': test}               
+            res, test_detail = self.read_test(test)            
+            if (res):
+                params['version'] = int(test_detail['version'])                 
+            body = self._client.call_method('tl.addTestCaseToTestPlan', params) 
             
-            plan_id = plan[0]['id']
-               
-        method = 'tl.addTestCaseToTestPlan'
-        params = {
-                  'testprojectid': self._project_id,
-                  'testplanid': plan_id,
-                  'testcaseid': test
-                 }   
+        result = False    
+        if (body != None): 
+            if (body.__class__.__name__ == 'list'):
+                body = body[0]
+       
+            status = body['status'] if ('status' in body.keys()) else None                    
+            if (status != None):
+                self._mh.dmsg('htk_on_debug_info', self._mh._trn.msg('track_updated', test), self._mh.fromhere())            
+                ev = event.Event('track_after_update')
+                self._mh.fire_event(ev)
+                result = True 
+            else:
+                self._mh.dmsg('htk_on_error', self._mh._trn.msg('track_error', body['code'], body['message']), self._mh.fromhere())                               
         
-        res, test_detail = self.read_test(test)
-        if (res):
-            params['version'] = test_detail[0]['version']         
-        
-        return self._update(method, params)  
+        return result              
     
     def update_test_execution(self, test, status, notes=None, plan=None, plan_id=None, build_id=None):   
         """Method updates test execution
@@ -820,81 +701,66 @@ class Client(object):
            bool: result   
              
         """
+                  
+        message = 'status:{0}, notes:{1}, plan:{2}, plan_id:{3}, build_id:{4}'.format(status, notes, plan, plan_id, build_id)
+        self._mh.dmsg('htk_on_debug_info', self._mh._trn.msg('track_updating', 'test', test, message), self._mh.fromhere())                    
                     
         if (not self._is_connected):
             self._mh.dmsg('htk_on_warning', self._mh._trn.msg('track_not_connected'), self._mh.fromhere()) 
-            return False                    
+            return False
         
-        if (plan != None):
-            method = 'tl.getTestPlanByName'
-            params = {
-                      'testprojectname': self._project,
-                      'testplanname': plan
-                     }
-            res, plan = self._read(method, params)
+        ev = event.Event('track_before_update', test, status, notes, plan, plan_id, build_id)
+        if (self._mh.fire_event(ev) > 0):            
+            test = ev.argv(0)
+            status = ev.argv(1)
+            notes = ev.argv(2)
+            plan = ev.argv(3)
+            plan_id = ev.argv(4)
+            build_id = ev.argv(5)  
             
-            if (not res):
-                return False
-            
-            plan_id = plan[0]['id']
-            
-        if (build_id == None):
-            method = 'tl.getLatestBuildForTestPlan'
-            params = {'testplanid': plan_id}
-            res, build = self._read(method, params)
-            
-            if (not res):
-                return False
-            
-            build_id = build[0]['id']
-            
-        method = 'tl.reportTCResult'
-        params = {
-                  'testplanid': plan_id,
-                  'buildid': build_id,
-                  'testcaseid': test,
-                  'status': status,
-                  'notes': notes 
-                 }
-        return self._update(method, params)
+        if (ev.will_run_default()):                                          
         
-    def _prepare_params(self, entity, params={}):
-        """Method prepares params xml
-        
-        Args: 
-           entity (str): entity type
-           params (dict): params, key, value
-           
-        Returns:
-           xml: params xml
+            if (plan != None):
+                params = {'devKey': self._dev_key, 'testprojectname': self._project, 'testplanname': plan} 
+                body = self._client.call_method('tl.getTestPlanByName', params)
                 
-        """          
-        
-        root = Element('params') 
-        el_struct = SubElement(SubElement(SubElement(root, 'param'), 'value'), 'struct') 
-        
-        if ('devKey' not in params):
-            params['devKey'] = self._dev_key 
-        
-        for key, value in params.items():
-            el_param = SubElement(el_struct, 'member')
-            SubElement(el_param, 'name').text = key
-            if (key == 'version'):
-                SubElement(SubElement(el_param, 'value'), 'int').text = str(value).decode('utf8') if (version_info[0] == 2) else str(value)            
-            elif (key == 'steps'):
-                el_steps = SubElement(SubElement(SubElement(el_param, 'value'), 'array'), 'data')
-                for i in range(0, len(value)):
-                    el_step = SubElement(SubElement(el_steps, 'value'), 'struct')
-                    if ('step_number' not in value[i]):
-                        value[i]['step_number'] = i+1
-                    for name, val in value[i].items():
-                        el_member = SubElement(el_step, 'member')
-                        SubElement(el_member, 'name').text = name
-                        SubElement(SubElement(el_member, 'value'), 'string').text = str(val).decode('utf8') if (version_info[0] == 2) else str(value) 
-            else:
-                SubElement(SubElement(el_param, 'value'), 'string').text = str(value).decode('utf8') if (version_info[0] == 2) else str(value)  
+                if (body.__class__.__name__ == 'list'):
+                    body = body[0]                
+                    
+                plan_id = body['id'] if ('id' in body.keys()) else None
+                if (plan_id == None):
+                    self._mh.dmsg('htk_on_error', self._mh._trn.msg('track_error', body['code'], body['message']), self._mh.fromhere())
+                    return False
             
-        return root 
+            if (build_id == None):
+                params = {'devKey': self._dev_key, 'testplanid': plan_id}
+                body = self._client.call_method('tl.getLatestBuildForTestPlan', params)
+                if (body.__class__.__name__ == 'list'):
+                    body = body[0]  
+                                  
+                build_id = body['id'] if ('id' in body.keys()) else None 
+                if (build_id == None):
+                    self._mh.dmsg('htk_on_error', self._mh._trn.msg('track_error', body['code'], body['message']), self._mh.fromhere())
+                    return False 
+            
+            params = {'devKey': self._dev_key, 'testplanid': plan_id, 'buildid': build_id, 'testcaseid': test, 'status': status, 'notes': notes}
+            body = self._client.call_method('tl.reportTCResult', params)
+
+        result = False    
+        if (body != None): 
+            if (body.__class__.__name__ == 'list'):
+                body = body[0]
+       
+            status = body['status'] if ('status' in body.keys()) else None                    
+            if (status != None):
+                self._mh.dmsg('htk_on_debug_info', self._mh._trn.msg('track_updated', test), self._mh.fromhere())            
+                ev = event.Event('track_after_update')
+                self._mh.fire_event(ev)
+                result = True 
+            else:
+                self._mh.dmsg('htk_on_error', self._mh._trn.msg('track_error', body['code'], body['message']), self._mh.fromhere())                               
+        
+        return result  
     
     def _get_suite(self, path): 
         """Method gets suite from hierarchical path
@@ -914,18 +780,19 @@ class Client(object):
         id = None
         for i in range(0, cnt):
             if (i == 0):
-                method = 'tl.getFirstLevelTestSuitesForTestProject'
-                params = {'testprojectid': self._project_id}        
-            else:  
-                method = 'tl.getTestSuitesForTestSuite'            
-                params = {'testsuiteid': id}
-            
-            res, records = self._read(method, params)
+                params = {'devKey': self._dev_key, 'testprojectid': self._project_id}
+                recs = self._client.call_method('tl.getFirstLevelTestSuitesForTestProject', params)        
+            else:          
+                params = {'devKey': self._dev_key, 'testsuiteid': id}
+                recs = self._client.call_method('tl.getTestSuitesForTestSuite', params)
+                        
             found = False
-            if (res):
-                for record in records:                
-                    if (record['name'] == folders[i]):                        
-                        id = record['id']
+            if (recs != None):
+                if (recs.__class__.__name__ == 'dict'):
+                    recs = [recs] if (list(recs.values())[0].__class__.__name__ != 'dict') else recs.values()
+                for rec in recs:             
+                    if (rec['name'] == folders[i]):                        
+                        id = rec['id']
                         found = True
                         break   
                     
@@ -935,75 +802,4 @@ class Client(object):
                 return None                                        
             
         return id    
-    
-    def _parse_steps(self, node, fields=None):
-        """Method parses test steps
-        
-        Args:
-           node (xml): steps node
-           fields (list): fields to be returned, default all
-           
-        Returns:
-           list: list of dict
-        
-        """   
-        
-        entity = 'test'
-        if (fields == None and self._return_fields != None):
-            fields = self._return_fields          
-        
-        steps = []
-        if (hasattr(node, 'array')):
-            for val in node.array.data.value:
-                step = {}
-                for item in val.struct.member:
-                    key = str(item.name)                                                                             
-                    value = getattr(item.value, 'string') 
-                    if (fields == None or key in fields):                                                                                            
-                        step[key] = value                     
-                           
-                steps.append(step)
-            
-        return steps  
-    
-    def _parse_plan_tests(self, node, fields=None):
-        """Method parses plan tests
-        
-        Args:
-           node (xml): test node
-           fields (list): fields to be returned, default all
-           
-        Return:
-           dict: params
-           
-        """
-        
-        entity = 'test'
-        params = {}
-        if (hasattr(node, 'array')):
-            for item in node.array.data.value.struct.member:
-                key = str(item.name)
-                value = getattr(item.value, 'string')
-                if (fields == None or key in fields):  
-                    params[key] = value
-            
-        return params      
-    
-    def _parse_suites(self, node):
-        """Method parses suites
-        
-        Args:
-           node (xml): test suite node
-           
-        Return:
-           dict: params
-           
-        """
-        
-        params = {}
-        for item in node.struct.member:
-            key = str(item.name)
-            value = getattr(item.value, 'string')
-            params[key] = value
-            
-        return params                   
+               
