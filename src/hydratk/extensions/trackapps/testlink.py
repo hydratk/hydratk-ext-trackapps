@@ -29,7 +29,6 @@ track_after_read_plan
 from hydratk.core.masterhead import MasterHead
 from hydratk.core import event
 from hydratk.lib.network.rpc.client import RPCClient
-from sys import version_info
 
 class Client(object):
     """Class Client
