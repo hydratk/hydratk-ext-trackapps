@@ -26,7 +26,6 @@ from hydratk.core.masterhead import MasterHead
 from hydratk.core import event
 from hydratk.lib.network.rest.client import RESTClient
 from simplejson import dumps
-from base64 import encodestring
 from sys import version_info
 
 config = {
@@ -242,10 +241,8 @@ class Client(object):
             body = dumps(body)
             
             url = self._url + config['search']
-            auth = '{0}:{1}'.format(self._user, self._passw)
-            auth = encodestring(auth) if (version_info[0] == 2) else encodestring(auth.encode()).decode()
-            headers = {'Accept': 'application/json', 'Authorization': 'Basic ' + auth}
-            res, body = self._client.send_request(url, method='POST', headers=headers, body=body, content_type='json')   
+            res, body = self._client.send_request(url, method='POST', user=self._user, passw=self._passw, 
+                                                  headers={'Accept': 'application/json'}, body=body, content_type='json')   
                                
             result = False
             records = None
@@ -314,10 +311,8 @@ class Client(object):
             body = dumps(root)
              
             url = self._url + config['issue']
-            auth = '{0}:{1}'.format(self._user, self._passw)
-            auth = encodestring(auth) if (version_info[0] == 2) else encodestring(auth.encode()).decode()
-            headers = {'Accept': 'application/json', 'Authorization': 'Basic ' + auth}
-            res, body = self._client.send_request(url, method='POST', headers=headers, body=body, content_type='json')
+            res, body = self._client.send_request(url, method='POST', user=self._user, passw=self._passw, 
+                                                  headers={'Accept': 'application/json'}, body=body, content_type='json')   
             
         id = None
         if (res in (200, 201)):
@@ -366,10 +361,8 @@ class Client(object):
             body = dumps(root)
              
             url = self._url + config['issue'] + '/{0}-{1}'.format(self._project, id)
-            auth = '{0}:{1}'.format(self._user, self._passw)
-            auth = encodestring(auth) if (version_info[0] == 2) else encodestring(auth.encode()).decode()
-            headers = {'Accept': 'application/json', 'Authorization': 'Basic ' + auth}
-            res, body = self._client.send_request(url, method='PUT', headers=headers, body=body, content_type='json')
+            res, body = self._client.send_request(url, method='POST', user=self._user, passw=self._passw, 
+                                                  headers={'Accept': 'application/json'}, body=body, content_type='json')   
             
         result = False
         if (res in (200, 204)):

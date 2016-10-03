@@ -39,7 +39,7 @@ class Extension(extension.Extension):
         
         self._ext_id   = 'trackapps'
         self._ext_name = 'TrackApps'
-        self._ext_version = '0.1.0'
+        self._ext_version = '0.1.1'
         self._ext_author = 'Petr Rašek <bowman@hydratk.org>'
         self._ext_year = '2016'  
         

@@ -516,7 +516,8 @@ Test-Scenario-6:
         exp = 'Read error'
         assert (exp in res), 'message contains {0}'.format(exp) 
         cfg['url'] = cfg['dev_key'] = cfg['project'] = None                             
-        th.post_replace()                        
+        th.post_replace()
+        th.clear_cmd()                        
   
   Test-Case-2:
     Id: tc_02
@@ -670,7 +671,8 @@ Test-Scenario-6:
         this.test_result = res
         exp = 'for action update'
         assert (exp in res), 'message contains {0}'.format(exp)                                            
-        th.post_replace()  
+        th.post_replace() 
+        th.clear_cmd() 
         
 Test-Scenario-7:
   Id: ts_07
@@ -845,6 +847,7 @@ Test-Scenario-7:
         assert (res), 'file {0} created'.format(file)
         remove(file) 
         th.post_replace()
+        th.clear_cmd()
         
 Test-Scenario-8:
   Id: ts_08
@@ -1007,7 +1010,8 @@ Test-Scenario-8:
         this.test_result = res
         exp = 'created'
         assert (exp in res), 'message contains {0}'.format(exp) 
-        th.post_replace()      
+        th.post_replace() 
+        th.clear_cmd()     
         
 Test-Scenario-9:
   Id: ts_09
@@ -1130,6 +1134,7 @@ Test-Scenario-9:
         exp = 'Update error'
         assert (exp in res), 'message contains {0}'.format(exp) 
         th.post_replace()
+        th.clear_cmd()
         
 Test-Scenario-10:
   Id: ts_10
