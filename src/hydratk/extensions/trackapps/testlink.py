@@ -206,10 +206,11 @@ class Client(object):
         if (fields == None and self._return_fields != None):
             fields = self._return_fields        
         
-        ev = event.Event('track_before_read_suite', path, steps)
+        ev = event.Event('track_before_read_suite', path, steps, fields)
         if (self._mh.fire_event(ev) > 0):
             path = ev.argv(0)
             steps = ev.argv(1)
+            fields = ev.argv(2)
             
         if (ev.will_run_default()):             
                     
@@ -343,11 +344,12 @@ class Client(object):
         if (fields == None and self._return_fields != None):
             fields = self._return_fields   
         
-        ev = event.Event('track_before_read_plan', plan, plan_id, build_id)
+        ev = event.Event('track_before_read_plan', plan, plan_id, build_id, fields)
         if (self._mh.fire_event(ev) > 0):
             plan = ev.argv(0)
             plan_id = ev.argv(1)
             build_id = ev.argv(2)        
+            fields = ev.argv(3)
         
         if (ev.will_run_default()): 
             
@@ -801,4 +803,3 @@ class Client(object):
                 return None                                        
             
         return id    
-               

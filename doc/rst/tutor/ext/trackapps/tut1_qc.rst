@@ -139,7 +139,7 @@ Defects
      
      # delete defect
      # id=8595, id is mandatory, user will be prompted if missing
-     $ htk --tr-app --tr-action delete --tr-id 8595 track
+     $ htk --tr-app qc --tr-action delete --tr-id 8595 track
      
      Record 8595 deleted             
      

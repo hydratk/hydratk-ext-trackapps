@@ -26,7 +26,6 @@ from hydratk.core.masterhead import MasterHead
 from hydratk.core import event
 from hydratk.lib.network.rest.client import RESTClient
 from simplejson import dumps
-from sys import version_info
 
 config = {
   'session' : '/rest/auth/1/session',

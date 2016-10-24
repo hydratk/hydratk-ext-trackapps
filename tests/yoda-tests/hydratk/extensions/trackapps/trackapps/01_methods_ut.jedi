@@ -1139,7 +1139,7 @@ Test-Scenario-9:
 Test-Scenario-10:
   Id: ts_10
   Path: hydratk/extensions/trackapps/01_methods_ut.jedi
-  Name: ts_delee
+  Name: ts_delete
   Desc: Test method delete
   Author: Petr Rasek <bowman@hydratk.org>
   Version: 0.1
