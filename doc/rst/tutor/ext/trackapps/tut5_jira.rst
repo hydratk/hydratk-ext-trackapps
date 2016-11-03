@@ -62,7 +62,7 @@ Example
          return_fields: summary,description,id,status,priority
          required_fields: summary,description,priority
          default_values:                    
-           priority: {'name': 'Minor'}
+           priority: "{'name': 'Minor'}"
          lov: 
          
 Examples
