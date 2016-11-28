@@ -24,6 +24,10 @@ Unit tests available at hydratk/extensions/trackapps/trackapps/01_methods_ut.jed
 
 Method sets extension metadata (id, name, version, author, year). 
 
+* _check_dependencies
+
+Method checks if all required modules are installed.
+
 * _register_actions
 
 Methods registers actions hooks according to profile htk (default mode) or trackapps (standalone mode)

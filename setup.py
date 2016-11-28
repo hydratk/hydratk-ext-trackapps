@@ -45,7 +45,7 @@ entry_points = {
                 
 setup(
       name='hydratk-ext-trackapps',
-      version='0.1.1',
+      version='0.1.2a.dev1',
       description='Interface to bugtracking and test management applications',
       long_description=readme,
       author='Petr Rašek, HydraTK team',
@@ -57,7 +57,10 @@ setup(
       package_dir={'' : 'src'},
       classifiers=classifiers,
       zip_safe=False, 
-      entry_points=entry_points 
+      entry_points=entry_points,
+      keywords='hydratk,Quality Center,Bugzilla,Mantis,Jira,Trac,TestLink',
+      requires_python='>=2.6,!=3.0.*,!=3.1.*,!=3.2.*',
+      platforms='Linux' 
      )
 
 if ('install' in argv or 'bdist_egg' in argv or 'bdist_wheel' in argv):
