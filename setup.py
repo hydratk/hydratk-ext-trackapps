@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 from setuptools import setup, find_packages
 from sys import argv
-from os import path
-from subprocess import call
+import hydratk.lib.install.command as cmd
+import hydratk.lib.install.task as task
 
 with open("README.rst", "r") as f:
     readme = f.read()
@@ -27,15 +27,31 @@ classifiers = [
     "Topic :: Software Development :: Libraries :: Application Frameworks",
     "Topic :: Utilities"
 ]
+ 
+config = {
+  'pre_tasks' : [
+                 task.install_modules
+                ],
 
-requires = [
-            'hydratk',
-            'hydratk-lib-network'
-           ]  
-           
-files = {
-         'etc/hydratk/conf.d/hydratk-ext-trackapps.conf' : '/etc/hydratk/conf.d' 
-        }  
+  'post_tasks' : [
+                  task.set_config,
+                  task.set_manpage
+                 ],
+          
+  'modules' : [    
+               'hydratk',
+               'hydratk-lib-network'                                               
+              ],
+          
+  'files' : {
+             'config'  : {
+                          'etc/hydratk/conf.d/hydratk-ext-trackapps.conf' : '/etc/hydratk/conf.d'
+                         },
+             'manpage' : 'doc/trackapps.1'         
+            }                           
+}
+
+task.run_pre_install(argv, config) 
 
 entry_points = {
                 'console_scripts': [
@@ -45,7 +61,7 @@ entry_points = {
                 
 setup(
       name='hydratk-ext-trackapps',
-      version='0.1.2a.dev1',
+      version='0.1.2a.dev2',
       description='Interface to bugtracking and test management applications',
       long_description=readme,
       author='Petr Rašek, HydraTK team',
@@ -53,7 +69,6 @@ setup(
       url='http://extensions.hydratk.org/trackapps',
       license='BSD',
       packages=find_packages('src'),
-      install_requires=requires,
       package_dir={'' : 'src'},
       classifiers=classifiers,
       zip_safe=False, 
@@ -63,13 +78,4 @@ setup(
       platforms='Linux' 
      )
 
-if ('install' in argv or 'bdist_egg' in argv or 'bdist_wheel' in argv):
-    
-    for file, dir in files.items():    
-        if (not path.exists(dir)):
-            call('mkdir -p {0}'.format(dir), shell=True)
-            
-        call('cp {0} {1}'.format(file, dir), shell=True) 
-        
-    call('chmod -R a+r /etc/hydratk', shell=True)
-    call('gzip -c doc/trackapps.1 > /usr/share/man/man1/trackapps.1', shell=True)
+task.run_post_install(argv, config)
