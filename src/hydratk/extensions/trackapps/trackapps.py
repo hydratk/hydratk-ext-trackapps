@@ -41,7 +41,7 @@ class Extension(extension.Extension):
         self._ext_name = 'TrackApps'
         self._ext_version = '0.1.1'
         self._ext_author = 'Petr Rašek <bowman@hydratk.org>, HydraTK team <team@hydratk.org>'
-        self._ext_year = '2016'  
+        self._ext_year = '2016-2017'  
         
         if (not self._check_dependencies()):
             exit(0)        
@@ -68,7 +68,25 @@ class Extension(extension.Extension):
                                   }      
         }  
         
-        return bootstrapper._check_dependencies(dep_modules, 'hydratk-ext-trackapps')           
+        return bootstrapper._check_dependencies(dep_modules, 'hydratk-ext-trackapps')       
+    
+    def _uninstall(self):
+        """Method returns additional uninstall data 
+        
+        Args:            
+           none
+           
+        Returns:
+           list: files to delete    
+                
+        """            
+        
+        files = [
+                 '/usr/share/man/man1/trackapps.1',
+                 '/etc/hydratk/conf.d/hydratk-ext-trackapps.conf'
+                ]
+            
+        return files        
         
     def _register_actions(self):
         """Method registers command hooks

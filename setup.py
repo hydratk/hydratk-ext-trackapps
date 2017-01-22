@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 from setuptools import setup, find_packages
 from sys import argv
-import hydratk.lib.install.command as cmd
 import hydratk.lib.install.task as task
 
 with open("README.rst", "r") as f:
