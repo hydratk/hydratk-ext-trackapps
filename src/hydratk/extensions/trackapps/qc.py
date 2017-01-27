@@ -32,9 +32,11 @@ from hydratk.core.masterhead import MasterHead
 from hydratk.core import event
 from hydratk.lib.network.rest.client import RESTClient
 from lxml.etree import Element, SubElement, tostring
+from sys import version_info
 
 config = {
   'sign_in'  : '/authentication-point/authenticate',
+  'auth'     : '/rest/site-session',
   'sign_out' : '/authentication-point/logout',
   'rest'     : '/rest/domains/{0}/projects/{1}/{2}s',
   'entities' : ['defect', 'test-folder', 'test', 'test-set-folder', 'test-set', 'test-instance']
@@ -72,11 +74,20 @@ class Client(object):
         cfg = self._mh.cfg['Extensions']['TrackApps']['qc'] 
         if ('return_fields' in cfg and cfg['return_fields'] != None):
             self._return_fields = cfg['return_fields']
-            for key, value in cfg['return_fields'].items():
-                if (value != None):
-                    self._return_fields[key] = value.split(',')
+            if (self._return_fields.__class__.__name__ == 'dict'):
+                for key, value in cfg['return_fields'].items():
+                    if (value != None):
+                        self._return_fields[key] = value.split(',')
         if ('default_values' in cfg and cfg['default_values'] != None):
-            self._default_values = cfg['default_values']  
+            default_values = {}
+            for entity, expr in cfg['default_values'].items():
+                default_values[entity] = {}
+                if (expr != None):
+                    params = expr.split('#')
+                    for param in params:
+                        conf = param.split('%')
+                        default_values[entity][conf[0]] = conf[1]
+            self._default_values = default_values
         if ('url' in cfg and cfg['url'] != None):
             self._url = cfg['url']    
         if ('user' in cfg and cfg['user'] != None):
@@ -197,12 +208,16 @@ class Client(object):
             self._project = project  
             
             url = self._url + config['sign_in']
-            res, body = self._client.send_request(url, self._user, self._passw, 'POST')
+            res, body = self._client.send_request(url, user=self._user, passw=self._passw, method='POST')
+            if (res == 200):
+                url, cookie = self._url + config['auth'], self._client.get_header('set-cookie')
+                headers = {'Cookie': cookie}
+                res, body = self._client.send_request(url, user=self._user, passw=self._passw, method='POST', headers=headers)
         
         result = False
-        if (res == 200): 
+        if (res in [200, 201]): 
               
-            self._cookie = self._client.get_header('set-cookie')
+            self._cookie = '{0}, {1}'.format(cookie, self._client.get_header('set-cookie'))
             if (self._cookie != None):
                 self._is_connected = True
                 self._mh.dmsg('htk_on_debug_info', self._mh._trn.msg('track_connected'), self._mh.fromhere())            
@@ -393,7 +408,7 @@ class Client(object):
             for key, value in params.items():
                 elem = SubElement(el_fields, 'Field')            
                 elem.set('Name', key)
-                SubElement(elem, 'Value').text = str(value).decode('utf8')           
+                SubElement(elem, 'Value').text = str(value).decode('utf8') if (version_info[0] == 2) else str(value)          
             body = tostring(root)
              
             url = self._url + config['rest'].format(self._domain, self._project, entity)
@@ -453,7 +468,7 @@ class Client(object):
             for key, value in params.items():
                 elem = SubElement(el_fields, 'Field')            
                 elem.set('Name', key)
-                SubElement(elem, 'Value').text = str(value).decode('utf8')           
+                SubElement(elem, 'Value').text = str(value).decode('utf8') if (version_info[0] == 2) else str(value)          
             body = tostring(root)
              
             url = self._url + config['rest'].format(self._domain, self._project, entity) + '/' + str(id)
@@ -505,7 +520,7 @@ class Client(object):
             
         if (ev.will_run_default()):         
              
-            url = self._url + config['rest'].format(self._domain, self._project, entity) + str(id)
+            url = self._url + config['rest'].format(self._domain, self._project, entity) + '/' + str(id)
             headers = {'Cookie': self._cookie}           
             res, body = self._client.send_request(url, method='DELETE', headers=headers, content_type='xml')
             
@@ -567,7 +582,7 @@ class Client(object):
                                 
                 top_id = folder['id'] 
                 names_new = []
-                for i in xrange(0, len(folders)):   
+                for i in range(0, len(folders)):   
                                                          
                     if (folders[i]['id'] == top_id):
                         names_new.append(path)
@@ -584,7 +599,7 @@ class Client(object):
                             
                         names_new.append('{0}/{1}'.format(path, name))
                          
-                for i in xrange(0, len(folders)):  
+                for i in range(0, len(folders)):  
                     folders[i]['name'] = names_new[i]                       
                 
         if (res):
@@ -743,8 +758,8 @@ class Client(object):
             folders = folders[1:]
         
         cnt = len(folders)        
-        for i in xrange(0, cnt):
-            query = '{parent-id[%d]}' % parent_id            
+        for i in range(0, cnt):
+            query = '{parent-id[%d]}' % parent_id         
             res, records = self.read(entity=entity, fields=fields, query=query)   
                             
             if (res):

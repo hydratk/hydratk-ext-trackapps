@@ -494,7 +494,13 @@ class Extension(extension.Extension):
                 if (self._app == 'qc'):
                     if (self._entity in self._cfg['lov'] and 
                         self._cfg['lov'][self._entity] != None):
-                        lov = self._cfg['lov'][self._entity]
+                        lov = {}
+                        expr = self._cfg['lov'][self._entity]
+                        if (expr != None):
+                            lov_params = expr.split('#')
+                            for param in lov_params:
+                                conf = param.split('%')
+                                lov[conf[0]] = conf[1]
                 else:
                     lov = self._cfg['lov']
                     

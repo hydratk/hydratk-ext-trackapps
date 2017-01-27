@@ -78,20 +78,12 @@ Example
            test-instance: cycle-id,test-id,test-order,subtype-id
          default_values:
            defect:
-           test:
-             subtype-id: MANUAL
-             owner: x0549396
-             user-05: xxx
-           test-set:
-             subtype-id: 'hp.qc.test-set.default'
-           test-instance:
-             test-order: 1
-             subtype-id: 'hp.qc.test-instance.MANUAL'
+           test: subtype-id%MANUAL#owner%x0549396#user-05%xxx
+           test-set: subtype-id:hp.qc.test-set.default
+           test-instance: test-order%1#subtype-id%hp.qc.test-instance.MANUAL
          lov:
            defect:
-           test:
-             user-04: 31604_PoP CRM,31413_UDR User Data Repository
-             user-01: 1-Urgent,2-Very High,3-High,4-Medium,5-Low
+           test: user-04%31604_PoP CRM,31413_UDR User Data Repository#user-01%1-Urgent,2-Very High,3-High,4-Medium,5-Low
              
 Examples
 ^^^^^^^^ 
