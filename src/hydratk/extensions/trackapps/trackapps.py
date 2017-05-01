@@ -13,6 +13,17 @@ from hydratk.lib.console.commandlinetool import CommandlineTool
 from os import path
 from importlib import import_module
 
+dep_modules = {
+  'hydratk'             : {
+                           'min-version' : '0.4.0', 
+                           'package'     : 'hydratk'
+                          },
+  'hydratk.lib.network' : {
+                           'min-version' : '0.2.0', 
+                           'package'     : 'hydratk-lib-network'
+                          }      
+}
+
 apps = {
   'qc'       : 'qc',
   'bugzilla' : 'bugzilla',
@@ -55,18 +66,7 @@ class Extension(extension.Extension):
         Returns:
            bool    
                 
-        """         
-        
-        dep_modules = {
-          'hydratk'             : {
-                                   'min-version' : '0.4.0', 
-                                   'package'     : 'hydratk'
-                                  },
-          'hydratk.lib.network' : {
-                                   'min-version' : '0.2.0', 
-                                   'package'     : 'hydratk-lib-network'
-                                  }      
-        }  
+        """                   
         
         return bootstrapper._check_dependencies(dep_modules, 'hydratk-ext-trackapps')       
     
@@ -77,7 +77,7 @@ class Extension(extension.Extension):
            none
            
         Returns:
-           list: files to delete    
+           tuple: list (files), list (modules)   
                 
         """            
         
@@ -86,7 +86,7 @@ class Extension(extension.Extension):
                  '/etc/hydratk/conf.d/hydratk-ext-trackapps.conf'
                 ]
             
-        return files        
+        return files, dep_modules        
         
     def _register_actions(self):
         """Method registers command hooks

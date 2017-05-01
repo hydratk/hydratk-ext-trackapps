@@ -39,8 +39,8 @@ config = {
                  ],
           
   'modules' : [    
-               'hydratk',
-               'hydratk-lib-network'                                               
+               {'module': 'hydratk',             'version': '>=0.4.0'},
+               {'module': 'hydratk-lib-network', 'version': '>=0.2.0'}                                               
               ],
           
   'files' : {
