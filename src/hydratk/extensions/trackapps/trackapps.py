@@ -12,6 +12,7 @@ from hydratk.core import extension, bootstrapper
 from hydratk.lib.console.commandlinetool import CommandlineTool
 from os import path
 from importlib import import_module
+import hydratk.lib.system.config as syscfg
 
 dep_modules = {
     'hydratk': {
@@ -84,7 +85,7 @@ class Extension(extension.Extension):
 
         files = [
             '/usr/share/man/man1/trackapps.1',
-            '/etc/hydratk/conf.d/hydratk-ext-trackapps.conf'
+            '{0}/hydratk/conf.d/hydratk-ext-trackapps.conf'.format(syscfg.HTK_ETC_DIR)
         ]
 
         return files, dep_modules

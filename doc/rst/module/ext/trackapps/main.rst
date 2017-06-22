@@ -202,7 +202,7 @@ Method handles action delete (supported for mantis, trac, qc). It uses mandatory
 configuration
 ^^^^^^^^^^^^^
 
-Configuration is stored in /etc/hydratk/conf.dhydratk-ext-trackapps.conf   
+Configuration is stored in /etc/hydratk/conf.d/hydratk-ext-trackapps.conf   
 Each application has its own section.
 
 * url - server url

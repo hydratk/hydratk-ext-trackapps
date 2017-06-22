@@ -1,7 +1,15 @@
 # -*- coding: utf-8 -*-
-from setuptools import setup, find_packages
+from setuptools import setup as st_setup
+from setuptools import find_packages as st_find_packages
 from sys import argv
 import hydratk.lib.install.task as task
+import hydratk.lib.system.config as syscfg
+
+try:
+    os_info = syscfg.get_supported_os()
+except Exception as exc:
+    print(str(exc))
+    exit(1)
 
 with open("README.rst", "r") as f:
     readme = f.read()
@@ -45,7 +53,7 @@ config = {
 
     'files': {
         'config': {
-            'etc/hydratk/conf.d/hydratk-ext-trackapps.conf': '/etc/hydratk/conf.d'
+            'etc/hydratk/conf.d/hydratk-ext-trackapps.conf': '{0}/hydratk/conf.d'.format(syscfg.HTK_ETC_DIR)
         },
         'manpage': 'doc/trackapps.1'
     }
@@ -59,16 +67,16 @@ entry_points = {
     ]
 }
 
-setup(
+st_setup(
     name='hydratk-ext-trackapps',
-    version='0.1.2a.dev3',
+    version='0.1.2rc1',
     description='Interface to bugtracking and test management applications',
     long_description=readme,
     author='Petr Rašek, HydraTK team',
     author_email='bowman@hydratk.org, team@hydratk.org',
     url='http://extensions.hydratk.org/trackapps',
     license='BSD',
-    packages=find_packages('src'),
+    packages=st_find_packages('src'),
     package_dir={'': 'src'},
     classifiers=classifiers,
     zip_safe=False,
