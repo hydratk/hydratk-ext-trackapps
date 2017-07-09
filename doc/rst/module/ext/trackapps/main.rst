@@ -51,7 +51,7 @@ Method registers action hooks for standalone mode.
 commands - run, help
 long options - app, action, type, input, output, url, user, passw, dev-key, domain, project, id, fields, query, order-by, limit,
 offset, page, per-page, params, path, steps
-global options - config, debug, debug-channel, language, run-mode, force, interactive
+global options - config, debug, debug-channel, language, run-mode, force, interactive, home
 
 * init_client
 

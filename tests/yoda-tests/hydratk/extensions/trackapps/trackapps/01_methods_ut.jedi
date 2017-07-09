@@ -219,7 +219,7 @@ Test-Scenario-4:
         assert (sorted(res.keys()) == exp), '_cmd_hooks = {0}'.format(exp)  
         res = commandopt.long_opt['trackapps']
         this.test_result = str(res)
-        exp = ['action', 'app', 'config', 'debug', 'debug-channel', 'dev-key', 'domain', 'fields', 'force', 'id', 'input', 'interactive', 'language', 
+        exp = ['action', 'app', 'config', 'debug', 'debug-channel', 'dev-key', 'domain', 'fields', 'force', 'home', 'id', 'input', 'interactive', 'language', 
                'limit', 'offset', 'order-by', 'output', 'page', 'params', 'passw', 'path', 'per-page', 'project', 'query', 'run-mode', 'steps', 'type',
                'url', 'user']
         assert (sorted(res) == exp), 'long_opt = {0}'.format(exp)        
@@ -286,7 +286,7 @@ Test-Scenario-5:
         assert (sorted(res.keys()) == exp), '_cmd_hooks = {0}'.format(exp)
         res = commandopt.long_opt['trackapps']
         this.test_result = str(res)
-        exp = ['action', 'app', 'config', 'debug', 'debug-channel', 'dev-key', 'domain', 'fields', 'force', 'id', 'input', 'interactive', 'language', 
+        exp = ['action', 'app', 'config', 'debug', 'debug-channel', 'dev-key', 'domain', 'fields', 'force', 'home', 'id', 'input', 'interactive', 'language', 
                'limit', 'offset', 'order-by', 'output', 'page', 'params', 'passw', 'path', 'per-page', 'project', 'query', 'run-mode', 'steps', 'type',
                'url', 'user']
         assert (sorted(res) == exp), 'long_opt = {0}'.format(exp)           
