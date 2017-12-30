@@ -187,7 +187,7 @@ class Client(object):
 
         message = 'url:{0}, user:{1}, passw:{2}, project:{3}'.format(
             url, user, passw, project)
-        self._mh.dmsg('htk_on_debug_info', self._mh._trn.msg(
+        self._mh.demsg('htk_on_debug_info', self._mh._trn.msg(
             'track_connecting', message), self._mh.fromhere())
 
         if (url == None):
@@ -227,12 +227,12 @@ class Client(object):
             if (res != None and res != 0):
                 self._project_id = res
                 self._is_connected = True
-                self._mh.dmsg('htk_on_debug_info', self._mh._trn.msg(
+                self._mh.demsg('htk_on_debug_info', self._mh._trn.msg(
                     'track_connected'), self._mh.fromhere())
                 ev = event.Event('track_after_connect')
                 self._mh.fire_event(ev)
             else:
-                self._mh.dmsg('htk_on_error', self._mh._trn.msg(
+                self._mh.demsg('htk_on_error', self._mh._trn.msg(
                     'track_missing_project', project), self._mh.fromhere())
                 res = False
 
@@ -258,11 +258,11 @@ class Client(object):
 
         message = 'id:{0}, fields:{1}, page:{2}, per_page:{3}'.format(
             id, fields, page, per_page)
-        self._mh.dmsg('htk_on_debug_info', self._mh._trn.msg(
+        self._mh.demsg('htk_on_debug_info', self._mh._trn.msg(
             'track_reading', message), self._mh.fromhere())
 
         if (not self._is_connected):
-            self._mh.dmsg('htk_on_warning', self._mh._trn.msg(
+            self._mh.demsg('htk_on_warning', self._mh._trn.msg(
                 'track_not_connected'), self._mh.fromhere())
             return False, None
 
@@ -314,7 +314,7 @@ class Client(object):
                     cnt = len(records)
                 result = True
 
-                self._mh.dmsg('htk_on_debug_info', self._mh._trn.msg(
+                self._mh.demsg('htk_on_debug_info', self._mh._trn.msg(
                     'track_read', cnt), self._mh.fromhere())
                 ev = event.Event('track_after_read')
                 self._mh.fire_event(ev)
@@ -336,11 +336,11 @@ class Client(object):
 
         """
 
-        self._mh.dmsg('htk_on_debug_info', self._mh._trn.msg(
+        self._mh.demsg('htk_on_debug_info', self._mh._trn.msg(
             'track_creating', 'issue', params), self._mh.fromhere())
 
         if (not self._is_connected):
-            self._mh.dmsg('htk_on_warning', self._mh._trn.msg(
+            self._mh.demsg('htk_on_warning', self._mh._trn.msg(
                 'track_not_connected'), self._mh.fromhere())
             return None
 
@@ -366,7 +366,7 @@ class Client(object):
         id = None
         if (res != None):
             id = int(res)
-            self._mh.dmsg('htk_on_debug_info', self._mh._trn.msg(
+            self._mh.demsg('htk_on_debug_info', self._mh._trn.msg(
                 'track_created', id), self._mh.fromhere())
             ev = event.Event('track_after_create')
             self._mh.fire_event(ev)
@@ -389,11 +389,11 @@ class Client(object):
 
         """
 
-        self._mh.dmsg('htk_on_debug_info', self._mh._trn.msg(
+        self._mh.demsg('htk_on_debug_info', self._mh._trn.msg(
             'track_updating', 'issue', id, params), self._mh.fromhere())
 
         if (not self._is_connected):
-            self._mh.dmsg('htk_on_warning', self._mh._trn.msg(
+            self._mh.demsg('htk_on_warning', self._mh._trn.msg(
                 'track_not_connected'), self._mh.fromhere())
             return False
 
@@ -406,7 +406,7 @@ class Client(object):
 
             record = self.read(id, fields='all')[1]
             if (record == None or len(record) == 0):
-                self._mh.dmsg('htk_on_error', self._mh._trn.msg(
+                self._mh.demsg('htk_on_error', self._mh._trn.msg(
                     'track_unknown_record', id), self._mh.fromhere())
                 return None
             params_old = record
@@ -425,7 +425,7 @@ class Client(object):
         result = False
         if (res != None):
             result = True
-            self._mh.dmsg('htk_on_debug_info', self._mh._trn.msg(
+            self._mh.demsg('htk_on_debug_info', self._mh._trn.msg(
                 'track_updated', id), self._mh.fromhere())
             ev = event.Event('track_after_update')
             self._mh.fire_event(ev)
@@ -447,11 +447,11 @@ class Client(object):
 
         """
 
-        self._mh.dmsg('htk_on_debug_info', self._mh._trn.msg(
+        self._mh.demsg('htk_on_debug_info', self._mh._trn.msg(
             'track_deleting', 'issue', id), self._mh.fromhere())
 
         if (not self._is_connected):
-            self._mh.dmsg('htk_on_warning', self._mh._trn.msg(
+            self._mh.demsg('htk_on_warning', self._mh._trn.msg(
                 'track_not_connected'), self._mh.fromhere())
             return False
 
@@ -472,7 +472,7 @@ class Client(object):
         result = False
         if (res == True):
             result = True
-            self._mh.dmsg('htk_on_debug_info', self._mh._trn.msg(
+            self._mh.demsg('htk_on_debug_info', self._mh._trn.msg(
                 'track_deleted', id), self._mh.fromhere())
             ev = event.Event('track_after_delete')
             self._mh.fire_event(ev)

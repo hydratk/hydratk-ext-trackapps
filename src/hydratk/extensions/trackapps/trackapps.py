@@ -54,7 +54,7 @@ class Extension(extension.Extension):
         self._ext_name = 'TrackApps'
         self._ext_version = '0.1.1'
         self._ext_author = 'Petr Rašek <bowman@hydratk.org>, HydraTK team <team@hydratk.org>'
-        self._ext_year = '2016-2017'
+        self._ext_year = '2016-2018'
 
         if (not self._check_dependencies()):
             exit(0)
@@ -269,7 +269,7 @@ class Extension(extension.Extension):
 
         """
 
-        self._mh.dmsg('htk_on_debug_info', self._mh._trn.msg(
+        self._mh.demsg('htk_on_debug_info', self._mh._trn.msg(
             'track_received_cmd', 'track'), self._mh.fromhere())
 
         app = CommandlineTool.get_input_option('tr-app')
