@@ -69,7 +69,7 @@ entry_points = {
 
 st_setup(
     name='hydratk-ext-trackapps',
-    version='0.1.3.dev0',
+    version='0.1.3',
     description='Interface to bugtracking and test management applications',
     long_description=readme,
     author='Petr Rašek, HydraTK team',
