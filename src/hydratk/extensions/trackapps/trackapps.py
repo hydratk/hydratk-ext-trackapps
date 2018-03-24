@@ -256,7 +256,7 @@ class Extension(extension.Extension):
                 'hydratk.extensions.trackapps.{0}'.format(apps[app]))
             return mod.Client(*args, **kwargs)
         else:
-            raise NotImplementedError('Unknown application:{0}'.format(app))
+            raise NotImplementedError(self._mh._trn.msg('track_unknown_app', app))
 
     def handle_track(self):
         """Method handles command track
@@ -276,15 +276,15 @@ class Extension(extension.Extension):
         action = CommandlineTool.get_input_option('tr-action')
 
         if (not app):
-            print('Missing option app')
+            print(self._mh._trn.msg('track_missing_option', 'app'))
         elif (app.lower() not in apps):
-            print('Application not in qc|bugzilla|mantis|trac|jira|testlink')
+            print(self._mh._trn.msg('track_invalid_option_value', 'app', 'qc|bugzilla|mantis|trac|jira|testlink'))
         elif (not action):
-            print('Missing option action')
+            print(self._mh._trn.msg('track_missing_option', 'action'))
         elif (action not in ['read', 'create', 'update', 'delete']):
-            print('Action not in read|create|update|delete')
+            print(self._mh._trn.msg('track_invalid_option_value', 'action', 'read|create|update|delete'))
         elif (action == 'delete' and app.lower() not in ['qc', 'mantis', 'trac']):
-            print('Application {0} doesn\'t support {1}'.format(app, action))
+            print(self._mh._trn.msg('track_invalid_action', app, action))
         else:
 
             self._client = self.init_client(app)
@@ -295,7 +295,7 @@ class Extension(extension.Extension):
                 if ('url' in self._cfg and self._cfg['url'] != None):
                     url = self._cfg['url']
                 else:
-                    print('Enter url')
+                    print(self._mh._trn.msg('track_entry_request', 'url'))
                     url = raw_input(':')
 
             user = CommandlineTool.get_input_option('tr-user')
@@ -303,7 +303,7 @@ class Extension(extension.Extension):
                 if ('user' in self._cfg and self._cfg['user'] != None):
                     user = self._cfg['user']
                 else:
-                    print('Enter username')
+                    print(self._mh._trn.msg('track_entry_request', 'username'))
                     user = raw_input(':')
 
             passw = CommandlineTool.get_input_option('tr-passw')
@@ -311,7 +311,7 @@ class Extension(extension.Extension):
                 if ('passw' in self._cfg and self._cfg['passw'] != None):
                     passw = self._cfg['passw']
                 else:
-                    print('Enter password')
+                    print(self._mh._trn.msg('track_entry_request', 'password'))
                     passw = raw_input(':')
 
             dev_key = CommandlineTool.get_input_option('tr-dev-key')
@@ -319,7 +319,7 @@ class Extension(extension.Extension):
                 if ('dev_key' in self._cfg and self._cfg['dev_key'] != None):
                     dev_key = self._cfg['dev_key']
                 else:
-                    print('Enter dev_key')
+                    print(self._mh._trn.msg('track_entry_request', 'dev_key'))
                     dev_key = raw_input(':')
 
             domain = CommandlineTool.get_input_option('tr-domain')
@@ -327,7 +327,7 @@ class Extension(extension.Extension):
                 if ('domain' in self._cfg and self._cfg['domain'] != None):
                     domain = self._cfg['domain']
                 else:
-                    print('Enter domain')
+                    print(self._mh._trn.msg('track_entry_request', 'domain'))
                     domain = raw_input(':')
 
             project = CommandlineTool.get_input_option('tr-project')
@@ -335,26 +335,24 @@ class Extension(extension.Extension):
                 if ('project' in self._cfg and self._cfg['project'] != None):
                     project = self._cfg['project']
                 else:
-                    print('Enter project')
+                    print(self._mh._trn.msg('track_entry_request', 'project'))
                     project = raw_input(':')
 
             self._entity = CommandlineTool.get_input_option('tr-type')
             if (not self._entity):
                 self._entity = 'defect'
             if (self._app == 'qc' and self._entity not in ['defect', 'test-folder', 'test', 'test-set-folder', 'test-set', 'test-instance']):
-                print(
-                    'Type not in defect|test-folder|test|test-set-folder|test-set|test-instance')
+                print(self._mh._trn.msg('track_invalid_option_value', 'type', 'defect|test-folder|test|test-set-folder|test-set|test-instance'))
                 return
             elif (self._app == 'testlink'):
                 if (self._entity not in ['test', 'test-suite', 'test-plan', 'build']):
-                    print('Type not in test|test-suite|test-plan|build')
+                    print(self._mh._trn.msg('track_invalid_option_value', 'type', 'test|test-suite|test-plan|build'))
                     return
                 elif (action == 'read' and self._entity not in ['test', 'test-suite', 'test-plan']):
-                    print(
-                        'Type not in test|test-suite|test-plan for action read')
+                    print(self._mh._trn.msg('track_invalid_option_value', 'type', 'test|test-suite|test-plan'))
                     return
                 elif (action == 'update' and self._entity not in ['test', 'test-plan']):
-                    print('Type not in test|test-plan for action update')
+                    print(self._mh._trn.msg('track_invalid_option_value', 'type', 'test|test-plan'))
                     return
 
             if (self._app == 'qc'):
@@ -367,7 +365,7 @@ class Extension(extension.Extension):
                 res = self._client.connect(url, dev_key, project)
 
             if (not res):
-                print('Connection error')
+                print(self._mh._trn.msg('track_action_error', 'connect'))
                 return
 
             if (action == 'read'):
@@ -436,13 +434,13 @@ class Extension(extension.Extension):
             if (self._entity in ['test-folder', 'test-set-folder']):
                 path = CommandlineTool.get_input_option('tr-path')
                 if (not path):
-                    print('Enter path')
+                    print(self._mh._trn.msg('track_entry_request', 'path'))
                     path = raw_input(':')
                 res, records = self._client.read_test_folder(
                     path, self._entity)
             elif (self._entity == 'test-set'):
                 if (not id):
-                    print('Enter test set id')
+                    print(self._mh._trn.msg('track_entry_request', 'test-set id'))
                     id = raw_input(':')
                 res, records = self._client.read_test_set(int(id))
             else:
@@ -453,19 +451,19 @@ class Extension(extension.Extension):
             if (self._entity == 'test-suite'):
                 path = CommandlineTool.get_input_option('tr-path')
                 if (not path):
-                    print('Enter path')
+                    print(self._mh._trn.msg('track_entry_request', 'path'))
                     path = raw_input(':')
                 res, records = self._client.read_test_suite(
                     path, fields=fields)
             elif (self._entity == 'test-plan'):
                 if (not id):
-                    print('Enter plan id')
+                    print(self._mh._trn.msg('track_entry_request', 'plan id'))
                     id = raw_input(':')
                 res, records = self._client.read_test_plan(
                     plan_id=id, fields=fields)
             elif (self._entity == 'test'):
                 if (not id):
-                    print('Enter test id')
+                    print(self._mh._trn.msg('track_entry_request', 'test id'))
                     id = raw_input(':')
                 res, records = self._client.read_test(id, fields)
 
@@ -486,7 +484,7 @@ class Extension(extension.Extension):
                 with (open(output, 'w')) as f:
                     f.write(str(records))
         else:
-            print('Read error')
+            print(self._mh._trn.msg('track_action_error', 'read'))
 
     def create(self):
         """Method create action
@@ -552,7 +550,7 @@ class Extension(extension.Extension):
             for field in fields:
 
                 if (field not in params):
-                    print('Enter required field: {0}'.format(field))
+                    print(self._mh._trn.msg('track_entry_request', field))
 
                     if (field not in lov):
                         value = raw_input(':')
@@ -575,8 +573,7 @@ class Extension(extension.Extension):
                             if (idx >= 0 and idx < cnt):
                                 valid = True
                             else:
-                                print(
-                                    'Wrong choice, enter required field: {0}'.format(field))
+                                print(self._mh._trn.msg('track_entry_request', field))
 
                         params[field] = values[idx]
 
@@ -598,7 +595,7 @@ class Extension(extension.Extension):
             else:
                 path = CommandlineTool.get_input_option('tr-path')
                 if (not path):
-                    print('Enter path')
+                    print(self._mh._trn.msg('track_entry_request', 'path'))
                     path = raw_input(':')
                 if (self._entity == 'test'):
                     id = self._client.create_test(path, params)
@@ -613,7 +610,7 @@ class Extension(extension.Extension):
             if (self._entity == 'test-suite'):
                 path = CommandlineTool.get_input_option('tr-path')
                 if (not path):
-                    print('Enter path')
+                    print(self._mh._trn.msg('track_entry_request', 'path'))
                     path = raw_input(':')
                 details = params['details'] if ('details' in params) else None
 
@@ -624,7 +621,7 @@ class Extension(extension.Extension):
             elif (self._entity == 'test-plan'):
                 name = params['name'] if ('name' in params) else None
                 if ('name' not in params):
-                    print('Enter name')
+                    print(self._mh._trn.msg('track_entry_request', 'name'))
                     name = raw_input(':')
                 notes = params['notes'] if ('notes' in params) else None
 
@@ -633,11 +630,11 @@ class Extension(extension.Extension):
             elif (self._entity == 'build'):
                 plan = params['plan'] if ('plan' in params) else None
                 if ('plan' not in params):
-                    print('Enter plan id')
+                    print(self._mh._trn.msg('track_entry_request', 'plan id'))
                     plan = raw_input(':')
                 name = params['name'] if ('name' in params) else None
                 if ('name' not in params):
-                    print('Enter name')
+                    print(self._mh._trn.msg('track_entry_request', 'name'))
                     name = raw_input(':')
                 notes = params['notes'] if ('notes' in params) else None
 
@@ -646,7 +643,7 @@ class Extension(extension.Extension):
             elif (self._entity == 'test'):
                 path = CommandlineTool.get_input_option('tr-path')
                 if (not path):
-                    print('Enter path')
+                    print(self._mh._trn.msg('track_entry_request', 'path'))
                     path = raw_input(':')
 
                 id = self._client.create_test(path, params, steps)
@@ -655,9 +652,9 @@ class Extension(extension.Extension):
             id = self._client.create(params)
 
         if (id != None):
-            print('Record {0} created'.format(id))
+            print(self._mh._trn.msg('track_created', id))
         else:
-            print('Create error')
+            print(self._mh._trn.msg('track_action_error', 'create'))
 
     def update(self):
         """Method handles update action
@@ -672,7 +669,7 @@ class Extension(extension.Extension):
 
         id = CommandlineTool.get_input_option('tr-id')
         if (not id):
-            print('Enter id')
+            print(self._mh._trn.msg('track_entry_request', 'id'))
             id = raw_input(':')
 
         params_in = CommandlineTool.get_input_option('tr-params')
@@ -696,7 +693,7 @@ class Extension(extension.Extension):
             if (self._entity == 'test-plan'):
                 test_id = params['test'] if ('test' in params) else None
                 if ('test' not in params):
-                    print('Enter test id')
+                    print(self._mh._trn.msg('track_entry_request', 'test id'))
                     test_id = raw_input(':')
 
                 res = self._client.add_test_to_plan(test=test_id, plan_id=id)
@@ -704,7 +701,7 @@ class Extension(extension.Extension):
             elif (self._entity == 'test'):
                 plan_id = params['plan'] if ('plan' in params) else None
                 if ('plan' not in params):
-                    print('Enter plan id')
+                    print(self._mh._trn.msg('track_entry_request', 'plan id'))
                     plan_id = raw_input(':')
                 status = params['status'] if ('status' in params) else 'p'
                 notes = params['notes'] if ('notes' in params) else None
@@ -717,9 +714,9 @@ class Extension(extension.Extension):
             res = self._client.update(id, params)
 
         if (res):
-            print('Record {0} updated'.format(id))
+            print(self._mh._trn.msg('track_updated', id))
         else:
-            print('Update error')
+            print(self._mh._trn.msg('track_action_error', 'update'))
 
     def delete(self):
         """Method handles delete action
@@ -734,7 +731,7 @@ class Extension(extension.Extension):
 
         id = CommandlineTool.get_input_option('tr-id')
         if (not id):
-            print('Enter id')
+            print(self._mh._trn.msg('track_entry_request', 'id'))
             id = raw_input(':')
 
         if (self._app == 'qc'):
@@ -742,6 +739,6 @@ class Extension(extension.Extension):
         else:
             res = self._client.delete(id)
         if (res):
-            print('Record {0} deleted'.format(id))
+            print(self._mh._trn.msg('track_deleted', id))
         else:
-            print('Delete error')
+            print(self._mh._trn.msg('track_action_error', 'delete'))

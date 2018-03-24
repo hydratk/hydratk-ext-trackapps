@@ -15,6 +15,12 @@ language = {
 }
 
 msg = {
+    'track_unknown_app': ["Unknown application: {0}"],
+    'track_missing_option': ["Missing option: {0}"],
+    'track_invalid_option_value': ["Invalid option {0} value, supported values: {1}"],
+    'track_invalid_action': ["Application {0} doesn\'t support action {1}"],
+    'track_entry_request': ["Entry {0}"],
+    'track_action_error': ["Error within action {0}"],
     'track_connecting': ["Connecting to server with params: {0}"],
     'track_connected': ["Connected successfully"],
     'track_missing_cookie': ["Cookie missing in response"],

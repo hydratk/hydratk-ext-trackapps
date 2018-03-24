@@ -15,6 +15,12 @@ language = {
 
 
 msg = {
+    'track_unknown_app': ["Neznámá aplikace: {0}"],
+    'track_missing_option': ["Chybí volba: {0}"],
+    'track_invalid_option_value': ["Neplatná hodnota volby: {0}, podporované hodnoty: {1}"],
+    'track_invalid_action': ["Aplikace {0} nepodporuje akci {1}"],
+    'track_entry_request': ["Zadej {0}"],
+    'track_action_error': ["Chyba při akci {0}"],
     'track_connecting': ["Připojuji se ns server s parametry: {0}"],
     'track_connected': ["Spojení se serverem bylo úspěšné"],
     'track_missing_cookie': ["V odpovědi se nevrátilo cookie"],
