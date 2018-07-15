@@ -84,7 +84,7 @@ class Extension(extension.Extension):
         """
 
         files = [
-            '/usr/share/man/man1/trackapps.1',
+            '{0}/share/man/man1/trackapps.1'.format(syscfg.HTK_USR_DIR),
             '{0}/hydratk/conf.d/hydratk-ext-trackapps.conf'.format(syscfg.HTK_ETC_DIR)
         ]
 
